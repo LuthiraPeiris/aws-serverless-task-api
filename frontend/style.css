@@ -1,0 +1,459 @@
+
+/* =========================
+   1. Design tokens and reset
+========================= */
+
+:root {
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    color: #172033;
+    background: #f5f7fb;
+
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --text-muted: #718096;
+    --border: #e5eaf2;
+    --surface: #ffffff;
+    --success: #15803d;
+    --danger: #dc2626;
+    --radius: 14px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #f5f7fb;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+/* =========================
+   2. Main layout
+========================= */
+
+.app-container {
+    width: min(100% - 40px, 1000px);
+    margin: 0 auto;
+}
+
+.app-header {
+    min-height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--primary);
+    color: white;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.brand h1 {
+    margin: 0;
+    font-size: 21px;
+    letter-spacing: -0.5px;
+}
+
+.brand p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #9ca3af;
+    flex-shrink: 0;
+}
+
+.connection-status.connected .status-dot {
+    background: #22c55e;
+}
+
+.connection-status.disconnected .status-dot {
+    background: #ef4444;
+}
+
+/* =========================
+   3. Welcome section
+========================= */
+
+.welcome-section {
+    padding: 48px 0 28px;
+}
+
+.eyebrow {
+    margin: 0 0 12px;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+.welcome-section h2 {
+    margin: 0;
+    font-size: clamp(28px, 5vw, 40px);
+    letter-spacing: -1.5px;
+}
+
+.welcome-description {
+    margin: 12px 0 0;
+    color: var(--text-muted);
+    line-height: 1.7;
+}
+
+/* =========================
+   4. Statistics
+========================= */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    padding: 23px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.stat-label {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.stat-value {
+    margin: 12px 0 0;
+    font-size: 32px;
+    font-weight: 750;
+    letter-spacing: -1px;
+}
+
+/* =========================
+   5. Task section
+========================= */
+
+.task-section {
+    padding: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgb(15 23 42 / 3%);
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.section-heading h2 {
+    margin: 0;
+    font-size: 21px;
+}
+
+.section-heading p {
+    margin: 7px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.secondary-button {
+    padding: 10px 15px;
+    color: #334155;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+
+.secondary-button:hover {
+    background: #f8fafc;
+}
+
+.task-form {
+    margin-top: 30px;
+}
+
+.task-form label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.input-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px 14px;
+    color: #172033;
+    background: white;
+    border: 1px solid #dbe2ec;
+    border-radius: 9px;
+}
+
+.input-row input::placeholder {
+    color: #9aa5b5;
+}
+
+.input-row input:focus {
+    border-color: var(--primary);
+    outline: 2px solid #dbeafe;
+}
+
+#add-task-button {
+    padding: 13px 19px;
+    color: white;
+    background: var(--primary);
+    border: none;
+    border-radius: 9px;
+    font-weight: 650;
+    transition: background 0.15s ease;
+}
+
+#add-task-button:hover {
+    background: var(--primary-hover);
+}
+
+.form-hint {
+    margin: 9px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* =========================
+   6. Messages and task list
+========================= */
+
+.message {
+    margin-top: 20px;
+    padding: 12px 14px;
+    border-radius: 9px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.message.success {
+    color: var(--success);
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+
+.message.error {
+    color: var(--danger);
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.task-list-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 35px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+.task-list-heading h3 {
+    margin: 0;
+    font-size: 15px;
+}
+
+.task-list-heading span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.loading-state,
+.empty-state {
+    padding: 35px 12px;
+    color: var(--text-muted);
+    text-align: center;
+    font-size: 14px;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 19px 0;
+    border-bottom: 1px solid #edf0f5;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.task-details {
+    min-width: 0;
+}
+
+.task-title {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.task-date {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.delete-button {
+    flex-shrink: 0;
+    padding: 8px 11px;
+    color: var(--danger);
+    background: white;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.delete-button:hover {
+    background: #fef2f2;
+}
+
+/* =========================
+   7. Footer
+========================= */
+
+.app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 25px 0 35px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.app-footer p {
+    margin: 0;
+}
+
+/* =========================
+   8. Responsive layout
+========================= */
+
+@media (max-width: 600px) {
+    .app-container {
+        width: min(100% - 28px, 1000px);
+    }
+
+    .app-header {
+        min-height: 82px;
+        align-items: flex-start;
+        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 0;
+    }
+
+    .brand-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .welcome-section {
+        padding-top: 35px;
+    }
+
+    .stats-grid {
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 17px;
+    }
+
+    .stat-value {
+        font-size: 27px;
+    }
+
+    .task-section {
+        padding: 19px;
+    }
+
+    .input-row {
+        flex-direction: column;
+    }
+
+    #add-task-button {
+        width: 100%;
+    }
+
+    .app-footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

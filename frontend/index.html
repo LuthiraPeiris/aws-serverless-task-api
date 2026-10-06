@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="description"
+        content="A serverless task management application built with AWS Lambda, API Gateway, and DynamoDB."
+    >
+    <title>TaskFlow | Serverless Task Manager</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true">T</div>
+                <div>
+                    <h1>TaskFlow</h1>
+                    <p>Serverless Task Manager</p>
+                </div>
+            </div>
+
+            <div class="connection-status" id="connection-status">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="connection-text">Checking connection...</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="welcome-section">
+                <p class="eyebrow">YOUR WORKSPACE</p>
+                <h2>Manage your tasks.</h2>
+                <p class="welcome-description">
+                    Stay organized and keep track of what needs to get done.
+                </p>
+            </section>
+
+            <section class="stats-grid" aria-label="Task statistics">
+                <article class="stat-card">
+                    <p class="stat-label">Total Tasks</p>
+                    <p class="stat-value" id="total-tasks">—</p>
+                </article>
+
+                <article class="stat-card">
+                    <p class="stat-label">Actions This Session</p>
+                    <p class="stat-value" id="completed-actions">0</p>
+                </article>
+            </section>
+
+            <section class="task-section">
+                <div class="section-heading">
+                    <div>
+                        <h2>Your Tasks</h2>
+                        <p>Tasks saved in Amazon DynamoDB</p>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        id="refresh-button"
+                    >
+                        Refresh
+                    </button>
+                </div>
+
+                <form id="task-form" class="task-form">
+                    <label for="task-title">New task</label>
+
+                    <div class="input-row">
+                        <input
+                            type="text"
+                            id="task-title"
+                            name="title"
+                            placeholder="What do you need to do?"
+                            maxlength="200"
+                            required
+                        >
+
+                        <button type="submit" id="add-task-button">
+                            Add task
+                        </button>
+                    </div>
+
+                    <p class="form-hint">
+                        Your task will be saved to the cloud.
+                    </p>
+                </form>
+
+                <div
+                    id="message"
+                    class="message"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                ></div>
+
+                <div class="task-list-heading">
+                    <h3>All tasks</h3>
+                    <span id="task-count">0 tasks</span>
+                </div>
+
+                <div id="task-list" class="task-list">
+                    <div class="loading-state">
+                        Loading your tasks...
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <p>TaskFlow · Built with AWS Serverless Services</p>
+            <p>API Gateway · Lambda · DynamoDB</p>
+        </footer>
+    </div>
+</body>
+</html>

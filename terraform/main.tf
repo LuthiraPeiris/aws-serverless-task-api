@@ -161,13 +161,14 @@ resource "aws_apigatewayv2_stage" "default" {
   auto_deploy = true
 }
 
-# Allow this API to invoke the existing Lambda function
+# Allow only this API Gateway API to invoke the Lambda function
 resource "aws_lambda_permission" "api_gateway_invoke" {
   statement_id  = "AllowApiGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.task_api.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.task_api.execution_arn}/*/*"
+
+  source_arn = "${aws_apigatewayv2_api.task_api.execution_arn}/*/*/tasks*"
 }
 
 # Display the API endpoint after deployment

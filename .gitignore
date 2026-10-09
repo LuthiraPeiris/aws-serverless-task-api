@@ -47,3 +47,21 @@ desktop.ini
 *.tmp
 *.bak
 *.swp
+
+# Terraform state and generated files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Node.js dependencies and Lambda deployment package
+**/node_modules/
+lambda/function.zip

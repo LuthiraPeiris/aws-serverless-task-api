@@ -14,26 +14,67 @@ const dynamodb = DynamoDBDocumentClient.from(client);
 
 const tableName = process.env.TASKS_TABLE;
 
-export const handler = async (event) => {
-  console.log("Received event:", JSON.stringify(event));
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export const handler = async (event) => {
   try {
     const method =
       event?.requestContext?.http?.method ?? event?.httpMethod;
 
     const taskId = event?.pathParameters?.id;
 
-    if (method === "POST") {
-      const body =
-        typeof event.body === "string"
-          ? JSON.parse(event.body)
-          : event.body;
+    // Ensure the Lambda environment is configured.
+    if (!tableName) {
+      console.error("TASKS_TABLE environment variable is missing.");
 
-      const title = body?.title?.trim();
+      return response(500, {
+        message: "Internal server error."
+      });
+    }
+
+    // Create a task.
+    if (method === "POST") {
+      let body;
+
+      try {
+        body =
+          typeof event.body === "string"
+            ? JSON.parse(event.body)
+            : event.body;
+      } catch {
+        return response(400, {
+          message: "Request body must contain valid JSON."
+        });
+      }
+
+      if (
+        !body ||
+        typeof body !== "object" ||
+        Array.isArray(body)
+      ) {
+        return response(400, {
+          message: "Request body must be a JSON object."
+        });
+      }
+
+      if (typeof body.title !== "string") {
+        return response(400, {
+          message: "The title field must be a string."
+        });
+      }
+
+      const title = body.title.trim();
 
       if (!title) {
         return response(400, {
           message: "The title field is required."
+        });
+      }
+
+      if (title.length > 200) {
+        return response(400, {
+          message: "The title must not exceed 200 characters."
         });
       }
 
@@ -56,6 +97,18 @@ export const handler = async (event) => {
       });
     }
 
+    // Validate task IDs before retrieving or deleting tasks.
+    if (
+      (method === "GET" || method === "DELETE") &&
+      taskId &&
+      !UUID_PATTERN.test(taskId)
+    ) {
+      return response(400, {
+        message: "The task ID must be a valid UUID."
+      });
+    }
+
+    // Retrieve one task.
     if (method === "GET" && taskId) {
       const result = await dynamodb.send(
         new GetCommand({
@@ -70,9 +123,12 @@ export const handler = async (event) => {
         });
       }
 
-      return response(200, { task: result.Item });
+      return response(200, {
+        task: result.Item
+      });
     }
 
+    // Retrieve all tasks.
     if (method === "GET") {
       const result = await dynamodb.send(
         new ScanCommand({
@@ -85,6 +141,7 @@ export const handler = async (event) => {
       });
     }
 
+    // Delete one task.
     if (method === "DELETE" && taskId) {
       await dynamodb.send(
         new DeleteCommand({
@@ -104,7 +161,11 @@ export const handler = async (event) => {
         "Unsupported request. Use POST, GET /tasks, GET /tasks/{id}, or DELETE /tasks/{id}."
     });
   } catch (error) {
-    console.error("Error processing task request:", error);
+    // Log diagnostic information without logging the full request.
+    console.error("Error processing task request:", {
+      name: error?.name,
+      message: error?.message
+    });
 
     return response(500, {
       message: "Internal server error."

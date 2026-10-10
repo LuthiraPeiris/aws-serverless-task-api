@@ -7,35 +7,8 @@ XP, levels, and achievement badges.
 
 > **Project purpose:** TaskFlow Quest was built for the **AWS October Challenge**. It demonstrates an AI-powered, serverless task-planning application using Amazon Bedrock and other AWS services.
 
-## Contents
-
--   [Overview](#overview)
--   [Live Demo](#live-demo)
--   [Features](#features)
--   [Architecture](#architecture)
--   [AWS Services](#aws-services)
--   [Technology Stack](#technology-stack)
--   [Application Workflow](#application-workflow)
--   [API Reference](#api-reference)
--   [Gamification Rules](#gamification-rules)
--   [Repository Structure](#repository-structure)
--   [Prerequisites](#prerequisites)
--   [Run the Frontend Locally](#run-the-frontend-locally)
--   [Deploy and Manage AWS
-    Infrastructure](#deploy-and-manage-aws-infrastructure)
--   [Configure Amazon Bedrock](#configure-amazon-bedrock)
--   [Testing Checklist](#testing-checklist)
--   [Security and Cost
-    Considerations](#security-and-cost-considerations)
--   [Known Limitations](#known-limitations)
--   [Screenshots and Demo](#screenshots-and-demo)
--   [Learning Outcomes](#learning-outcomes)
--   [AWS Builder Center Article](#aws-builder-center-article)
--   [Roadmap](#roadmap)
--   [Author](#author)
--   [License](#license)
-
 ## Architecture
+![Image Alt](https://github.com/LuthiraPeiris/aws-serverless-task-api/blob/a275e5b0b47ca748479ea6ad833e5fa60aad8207/architecture/architecture.png)
 
 
 ## Overview

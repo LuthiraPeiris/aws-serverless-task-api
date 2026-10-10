@@ -5,7 +5,7 @@ with AWS serverless services. Users can manage tasks, ask Amazon Bedrock
 to break a goal into five actionable tasks, and stay motivated through
 XP, levels, and achievement badges.
 
-> **Project purpose:** TaskFlow Quest was built for the **Weekend Challenge: Build an agent people actually enjoy using**. It demonstrates an AI-powered, serverless task-planning application using Amazon Bedrock and other AWS services.
+> **Project purpose:** TaskFlow Quest was built for the **AWS October Weekend Challenge: Build an agent people actually enjoy using**. It demonstrates an AI-powered, serverless task-planning application using Amazon Bedrock and other AWS services.
 
 ## Architecture
 ![Image Alt](https://github.com/LuthiraPeiris/aws-serverless-task-api/blob/a275e5b0b47ca748479ea6ad833e5fa60aad8207/architecture/architecture.png)

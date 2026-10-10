@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,240 +5,750 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta
         name="description"
-        content="A serverless task management application built with AWS Lambda, API Gateway, and DynamoDB."
+        content="TaskFlow Quest - Serverless task manager and AI planner powered by AWS Lambda, DynamoDB, API Gateway, and Amazon Bedrock."
     >
-    <title>TaskFlow | Serverless Task Manager</title>
+    <title>TaskFlow Quest | Serverless Task Manager</title>
+
+    <!-- Google Fonts: Inter & Plus Jakarta Sans for crisp, modern typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
     <script src="app.js" defer></script>
 </head>
 <body>
-    <div class="app-container">
-        <header class="app-header">
-            <div class="brand">
-                <div class="brand-icon" aria-hidden="true">T</div>
-                <div>
-                    <h1>TaskFlow</h1>
-                    <p>Serverless Task Manager</p>
+    <div class="app-shell">
+        <!-- Mobile Sidebar Backdrop Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+        <!-- Left Navigation Sidebar -->
+        <aside class="app-sidebar" id="app-sidebar" aria-label="Main Navigation">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="brand-logo-mark" aria-hidden="true">
+                        <!-- TaskFlow Quest Diamond Emblem -->
+                        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M16 2L29 11.5L24 28.5H8L3 11.5L16 2Z" fill="url(#brandGrad1)"/>
+                            <path d="M16 2L29 11.5L16 22L3 11.5L16 2Z" fill="url(#brandGrad2)" opacity="0.9"/>
+                            <path d="M16 8L22 13L16 20L10 13L16 8Z" fill="#FFFFFF" opacity="0.95"/>
+                            <defs>
+                                <linearGradient id="brandGrad1" x1="16" y1="2" x2="16" y2="28.5" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#38BDF8"/>
+                                    <stop offset="1" stop-color="#1D4ED8"/>
+                                </linearGradient>
+                                <linearGradient id="brandGrad2" x1="3" y1="2" x2="29" y2="22" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#60A5FA"/>
+                                    <stop offset="1" stop-color="#2563EB"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <div class="brand-title-wrap">
+                        <span class="brand-name">TaskFlow</span>
+                        <span class="brand-tag">Quest</span>
+                    </div>
                 </div>
+
+                <!-- Close button for mobile drawer -->
+                <button type="button" class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close navigation menu">
+                    ✕
+                </button>
             </div>
 
-            <div class="connection-status" id="connection-status">
-                <span class="status-dot" aria-hidden="true"></span>
-                <span id="connection-text">Checking connection...</span>
-            </div>
-        </header>
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav" aria-label="Page links">
+                <button type="button" class="nav-item active" id="nav-dashboard" data-view="dashboard">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                    </span>
+                    <span class="nav-label">Dashboard</span>
+                </button>
 
-        <main>
-            <section class="welcome-section">
-                <p class="eyebrow">YOUR WORKSPACE</p>
-                <h2>Manage your tasks.</h2>
-                <p class="welcome-description">
-                    Stay organized and keep track of what needs to get done.
-                </p>
-            </section>
+                <button type="button" class="nav-item" id="nav-planner" data-view="planner">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </span>
+                    <span class="nav-label">AI Planner</span>
+                </button>
+            </nav>
 
-            <section class="stats-grid" aria-label="Task statistics">
-                <article class="stat-card">
-                    <p class="stat-label">Total Tasks</p>
-                    <p class="stat-value" id="total-tasks">—</p>
-                </article>
-
-                <article class="stat-card">
-                    <p class="stat-label">Actions This Session</p>
-                    <p class="stat-value" id="completed-actions">0</p>
-                </article>
-            </section>
-
-            <!-- TaskFlow Quest Gamification Dashboard -->
-            <section class="quest-section" aria-label="TaskFlow Quest Progress">
-                <div class="quest-header">
-                    <div class="quest-title-group">
-                        <div class="quest-badge-tag">TASKFLOW QUEST</div>
-                        <h2>Productivity Quest</h2>
-                        <p class="quest-subtitle">
-                            Level up by completing tasks. Prototype session progress.
-                        </p>
+            <!-- Sidebar Bottom Adventure Card -->
+            <div class="sidebar-footer">
+                <div class="sidebar-adventure-card">
+                    <div class="adventure-illustration" aria-hidden="true">
+                        <svg viewBox="0 0 200 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Sky & Mountain Silhouette -->
+                            <path d="M0 0H200V130H0Z" fill="url(#skyGradient)"/>
+                            <!-- Sun -->
+                            <circle cx="100" cy="55" r="16" fill="#FDE68A" opacity="0.8"/>
+                            <!-- Distant mountains -->
+                            <path d="M20 130L80 50L135 130Z" fill="#1E40AF" opacity="0.6"/>
+                            <path d="M90 130L150 40L210 130Z" fill="#1D4ED8" opacity="0.8"/>
+                            <path d="M135 60L150 40L165 60L150 55Z" fill="#93C5FD"/>
+                            <!-- Closer peak with hiker -->
+                            <path d="M-10 130L45 75L120 130Z" fill="#0F2B5E"/>
+                            <path d="M60 130L130 85L195 130Z" fill="#0A224E"/>
+                            <!-- Green trail hills -->
+                            <path d="M0 130C30 110 70 112 105 120C140 128 175 118 200 122V130H0Z" fill="#047857"/>
+                            <path d="M40 130C75 118 125 120 160 126C180 129 195 128 200 128V130H40Z" fill="#10B981"/>
+                            <!-- Hiker Silhouette -->
+                            <g transform="translate(100, 94) scale(0.7)">
+                                <circle cx="10" cy="3" r="3.2" fill="#FFFFFF"/>
+                                <path d="M7 7H13V15H7Z" fill="#FFFFFF"/>
+                                <path d="M12 8L17 13L15 14L11 10Z" fill="#FFFFFF"/>
+                                <path d="M8 15L6 23M12 15L14 23" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+                                <rect x="4" y="8" width="4" height="6" rx="1.5" fill="#F59E0B"/>
+                                <line x1="16" y1="8" x2="18" y2="24" stroke="#D1D5DB" stroke-width="1.2"/>
+                            </g>
+                            <defs>
+                                <linearGradient id="skyGradient" x1="100" y1="0" x2="100" y2="130" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#1E3A8A"/>
+                                    <stop offset="1" stop-color="#0F2856"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
                     </div>
-                    <div class="quest-level-card" id="quest-level-card">
-                        <div class="quest-level-emblem" id="quest-level-emblem" aria-hidden="true"></div>
-                        <div class="quest-level-info">
-                            <span class="quest-level-tier" id="quest-level-tier">LEVEL 1</span>
-                            <h3 class="quest-level-title" id="quest-level-title">Beginner</h3>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="quest-metrics-grid">
-                    <div class="quest-metric-card">
-                        <span class="quest-metric-label">Total Experience</span>
-                        <div class="quest-metric-value-row">
-                            <span class="quest-metric-number" id="quest-total-xp">0</span>
-                            <span class="quest-metric-unit">XP</span>
-                        </div>
-                    </div>
-                    <div class="quest-metric-card">
-                        <span class="quest-metric-label">Completed Tasks</span>
-                        <div class="quest-metric-value-row">
-                            <span class="quest-metric-number" id="quest-completed-count">0</span>
-                            <span class="quest-metric-unit">done</span>
-                        </div>
-                    </div>
-                    <div class="quest-metric-card quest-progress-card">
-                        <div class="quest-progress-header">
-                            <span class="quest-metric-label">Next Level Target</span>
-                            <span class="quest-progress-target" id="quest-progress-text">100 XP to Task Explorer</span>
-                        </div>
-                        <div class="quest-progress-bar-container" role="progressbar" id="quest-progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Experience toward next level">
-                            <div class="quest-progress-bar-fill" id="quest-progress-fill" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Achievement Badges -->
-                <div class="quest-badges-container">
-                    <div class="quest-badges-header">
-                        <h4>Achievement Badges</h4>
-                        <span class="quest-badges-counter" id="quest-badges-unlocked-count">0 / 2 Unlocked</span>
-                    </div>
-                    <div class="quest-badges-grid" id="quest-badges-grid" role="list"></div>
-                </div>
-            </section>
-
-            <!-- AI Task Planner -->
-            <section class="plan-section">
-                <div class="section-heading">
-                    <div>
-                        <h2>AI Task Planner</h2>
-                        <p>Powered by Amazon Bedrock</p>
-                    </div>
-                </div>
-
-                <form id="plan-form" class="task-form">
-                    <label for="plan-goal">Your goal</label>
-
-                    <div class="input-row">
-                        <input
-                            type="text"
-                            id="plan-goal"
-                            name="goal"
-                            placeholder="e.g. Learn AWS Lambda in five days"
-                            maxlength="500"
-                            required
-                        >
-
-                        <button type="submit" id="generate-plan-button">
-                            Generate Plan
-                        </button>
-                    </div>
-
-                    <p class="form-hint">
-                        Describe what you want to achieve. The AI will create a five-day plan.
+                    <p class="adventure-quote" id="sidebar-quote">
+                        "Small steps today, bigger adventures tomorrow."
                     </p>
-                </form>
-
-                <div
-                    id="plan-message"
-                    class="message"
-                    role="status"
-                    aria-live="polite"
-                    hidden
-                ></div>
-
-                <div id="plan-output" hidden>
-                    <div class="plan-result-heading">
-                        <h3 id="plan-title"></h3>
-                        <p class="form-hint">
-                            Select tasks to add to your task list.
-                            Only the title will be saved to DynamoDB — descriptions and day numbers are shown for reference only.
-                        </p>
-                    </div>
-
-                    <ul
-                        id="plan-task-list"
-                        class="plan-task-list"
-                        aria-label="Generated plan tasks"
-                    ></ul>
-
-                    <div class="plan-actions">
-                        <button
-                            type="button"
-                            id="add-selected-button"
-                            disabled
-                        >
-                            Add selected tasks
-                        </button>
-                    </div>
                 </div>
-            </section>
+            </div>
+        </aside>
 
-            <section class="task-section">
-                <div class="section-heading">
-                    <div>
-                        <h2>Your Tasks</h2>
-                        <p>Tasks saved in Amazon DynamoDB</p>
-                    </div>
-
-                    <button
-                        type="button"
-                        class="secondary-button"
-                        id="refresh-button"
-                    >
-                        Refresh
+        <!-- Main Workspace Shell -->
+        <div class="app-main">
+            <!-- Universal Top Header Bar -->
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open navigation sidebar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
                     </button>
-                </div>
-
-                <form id="task-form" class="task-form">
-                    <label for="task-title">New task</label>
-
-                    <div class="input-row">
-                        <input
-                            type="text"
-                            id="task-title"
-                            name="title"
-                            placeholder="What do you need to do?"
-                            maxlength="200"
-                            required
-                        >
-
-                        <button type="submit" id="add-task-button">
-                            Add task
-                        </button>
-                    </div>
-
-                    <p class="form-hint">
-                        Your task will be saved to the cloud.
-                    </p>
-                </form>
-
-                <div
-                    id="message"
-                    class="message"
-                    role="status"
-                    aria-live="polite"
-                    hidden
-                ></div>
-
-                <div class="task-list-heading">
-                    <h3>All tasks</h3>
-                    <span id="task-count">0 tasks</span>
-                </div>
-
-                <div id="task-list" class="task-list">
-                    <div class="loading-state">
-                        Loading your tasks...
+                    <!-- Connection pill -->
+                    <div class="connection-status" id="connection-status" title="API Status">
+                        <span class="status-dot" aria-hidden="true"></span>
+                        <span id="connection-text">AWS Connected</span>
                     </div>
                 </div>
-            </section>
-        </main>
 
-        <footer class="app-footer">
-            <p>TaskFlow · Built with AWS Serverless Services</p>
-            <p>API Gateway · Lambda · DynamoDB · Bedrock</p>
-        </footer>
+                <div class="topbar-right">
+                    <!-- Notification Bell Button -->
+                    <button type="button" class="icon-round-btn" id="notification-btn" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                        <span class="notification-dot" aria-hidden="true"></span>
+                    </button>
+
+                    <!-- User Profile Area -->
+                    <div class="user-profile-capsule" tabindex="0" role="button" aria-label="User menu">
+                        <div class="user-avatar" aria-hidden="true">
+                            <svg viewBox="0 0 36 36" fill="none">
+                                <circle cx="18" cy="18" r="18" fill="#DBEAFE"/>
+                                <path d="M18 9C15.24 9 13 11.24 13 14C13 16.76 15.24 19 18 19C20.76 19 23 16.76 23 14C23 11.24 20.76 9 18 9Z" fill="#2563EB"/>
+                                <path d="M9 28C9 23.58 13.03 20 18 20C22.97 20 27 23.58 27 28" fill="#2563EB"/>
+                            </svg>
+                        </div>
+                        <div class="user-details">
+                            <span class="user-name">TaskFlow Quest</span>
+                            <span class="user-status-text">Keep going!</span>
+                        </div>
+                        <span class="dropdown-chevron" aria-hidden="true">▾</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Notification Messages banner -->
+            <div id="message" class="global-banner-message" role="status" aria-live="polite" hidden></div>
+
+            <!-- =========================================================
+                 VIEW 1: DASHBOARD PAGE
+                 ========================================================= -->
+            <main id="dashboard-view" class="page-view active" aria-label="Dashboard Workspace">
+                <!-- Welcome Banner with Mountain Horizon -->
+                <section class="welcome-banner dashboard-banner">
+                    <div class="banner-content">
+                        <span class="banner-greeting">Welcome back, Luthi! 👋</span>
+                        <h1 class="banner-title">
+                            Make progress, <span class="highlight-blue">one task at a time.</span>
+                        </h1>
+                        <p class="banner-subtitle">
+                            Stay focused. Complete tasks. Earn XP. Unlock achievements.
+                        </p>
+                    </div>
+
+                    <!-- Landscape Illustration in Banner Background -->
+                    <div class="banner-mountain-art" aria-hidden="true">
+                        <svg viewBox="0 0 700 160" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Soft Sky Glow -->
+                            <rect width="700" height="160" fill="transparent"/>
+                            <!-- Sun -->
+                            <circle cx="480" cy="50" r="26" fill="#FEF08A" opacity="0.85"/>
+                            <circle cx="480" cy="50" r="38" fill="#FEF9C3" opacity="0.45"/>
+                            <!-- Distant Mountains -->
+                            <path d="M220 160L320 60L420 160Z" fill="#BFDBFE" opacity="0.7"/>
+                            <path d="M360 160L460 40L570 160Z" fill="#93C5FD" opacity="0.8"/>
+                            <path d="M490 160L580 50L680 160Z" fill="#60A5FA" opacity="0.75"/>
+                            <!-- Snow caps -->
+                            <path d="M440 64L460 40L480 64L460 58Z" fill="#FFFFFF"/>
+                            <path d="M565 67L580 50L595 67L580 62Z" fill="#FFFFFF"/>
+                            <!-- Middle Layer Mountains -->
+                            <path d="M120 160L230 70L340 160Z" fill="#3B82F6" opacity="0.65"/>
+                            <path d="M280 160L390 75L500 160Z" fill="#2563EB" opacity="0.5"/>
+                            <!-- Foreground Rolling Foothills -->
+                            <path d="M0 160C120 120 220 125 360 145C480 160 600 135 700 140V160H0Z" fill="#10B981" opacity="0.7"/>
+                            <path d="M80 160C220 130 380 135 520 150C620 158 680 152 700 155V160H80Z" fill="#059669" opacity="0.9"/>
+                            <!-- Pine tree silhouettes -->
+                            <path d="M520 148L525 138L530 148ZM532 150L536 142L540 150ZM544 149L548 139L552 149ZM570 146L575 136L580 146ZM583 148L587 140L591 148Z" fill="#047857"/>
+                        </svg>
+                    </div>
+                </section>
+
+                <!-- 4 Metrics & Level Cards Row -->
+                <section class="stats-row" aria-label="Level and Statistics Overview">
+                    <!-- Card 1: Level Card -->
+                    <article class="stat-card level-overview-card" id="quest-level-card">
+                        <div class="level-card-left">
+                            <div class="level-star-badge" id="quest-level-emblem" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                            </div>
+                            <div class="level-titles">
+                                <span class="level-badge-tag" id="quest-level-tier">Level 1</span>
+                                <h3 class="level-name" id="quest-level-title">Beginner</h3>
+                            </div>
+                        </div>
+
+                        <div class="level-card-right">
+                            <div class="level-xp-text-row">
+                                <span class="xp-counter-label" id="quest-xp-display">0 / 100 XP</span>
+                            </div>
+                            <div class="level-progressbar-bg" role="progressbar" id="quest-progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Experience toward next level">
+                                <div class="level-progressbar-fill" id="quest-progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <span class="level-next-hint" id="quest-progress-text">100 XP to reach Level 2</span>
+                        </div>
+                    </article>
+
+                    <!-- Card 2: Total Tasks -->
+                    <article class="stat-card compact-stat-card">
+                        <div class="stat-icon-bubble icon-blue" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="12" r="6"/>
+                                <circle cx="12" cy="12" r="2"/>
+                            </svg>
+                        </div>
+                        <div class="stat-meta">
+                            <span class="stat-number" id="total-tasks">0</span>
+                            <span class="stat-label-link">Total Tasks ›</span>
+                        </div>
+                    </article>
+
+                    <!-- Card 3: Completed Tasks -->
+                    <article class="stat-card compact-stat-card">
+                        <div class="stat-icon-bubble icon-green" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M20 6 9 17l-5-5"/>
+                            </svg>
+                        </div>
+                        <div class="stat-meta">
+                            <span class="stat-number" id="completed-tasks-count">0</span>
+                            <span class="stat-label-link">Completed ›</span>
+                        </div>
+                    </article>
+
+                    <!-- Card 4: Completion Rate -->
+                    <article class="stat-card compact-stat-card">
+                        <div class="stat-icon-bubble icon-cyan" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="stat-meta">
+                            <span class="stat-number" id="completion-rate">0%</span>
+                            <span class="stat-label-link">Completion Rate ›</span>
+                        </div>
+                    </article>
+                </section>
+
+                <!-- Dashboard 2-Column Main Workspace Grid -->
+                <div class="dashboard-grid">
+                    <!-- Left: My Tasks Section -->
+                    <section class="my-tasks-card" aria-label="Task Management List">
+                        <div class="my-tasks-header">
+                            <div class="tasks-title-group">
+                                <div class="tasks-heading-row">
+                                    <span class="header-icon-box" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 11l3 3L22 4"/>
+                                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                                        </svg>
+                                    </span>
+                                    <h2>My Tasks</h2>
+                                </div>
+                                <p class="tasks-subtext">Manage your tasks, track your progress, and achieve your goals.</p>
+                            </div>
+
+                            <div class="tasks-controls-group">
+                                <!-- Search Input -->
+                                <div class="task-search-wrapper">
+                                    <span class="search-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"/>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                        </svg>
+                                    </span>
+                                    <input
+                                        type="text"
+                                        id="task-search-input"
+                                        class="task-search-field"
+                                        placeholder="Search tasks..."
+                                        aria-label="Search your tasks"
+                                    >
+                                </div>
+
+                                <!-- Add Task Primary Action Button -->
+                                <button type="button" class="btn-primary-blue" id="open-add-task-modal-btn">
+                                    <span class="plus-icon" aria-hidden="true">+</span> Add Task
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter Tabs Row -->
+                        <div class="tasks-filter-bar">
+                            <button type="button" class="filter-tab active" data-filter="all" id="filter-tab-all">
+                                All Tasks (<span id="filter-count-all">0</span>)
+                            </button>
+                            <button type="button" class="filter-tab" data-filter="active" id="filter-tab-active">
+                                Active (<span id="filter-count-active">0</span>)
+                            </button>
+                            <button type="button" class="filter-tab" data-filter="completed" id="filter-tab-completed">
+                                Completed (<span id="filter-count-completed">0</span>)
+                            </button>
+                        </div>
+
+                        <!-- Tasks Table Structure -->
+                        <div class="tasks-table-container">
+                            <div class="tasks-table-header" role="row">
+                                <div class="col-check" aria-label="Status"></div>
+                                <div class="col-title">Task</div>
+                                <div class="col-priority">Priority</div>
+                                <div class="col-due">Due Date</div>
+                                <div class="col-xp">XP</div>
+                                <div class="col-actions">Actions</div>
+                            </div>
+
+                            <!-- Dynamic Task Rows Container -->
+                            <div id="task-list" class="tasks-table-body" role="list" aria-label="Task list">
+                                <div class="loading-state">
+                                    <div class="spinner"></div>
+                                    <p>Loading your tasks...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Right Column: Progress & Achievements Panel -->
+                    <aside class="dashboard-side-panel">
+                        <!-- Progress Donut Card -->
+                        <article class="panel-card progress-summary-card">
+                            <div class="panel-card-header">
+                                <div class="panel-title-row">
+                                    <span class="panel-icon-blue" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="18" y1="20" x2="18" y2="10"/>
+                                            <line x1="12" y1="20" x2="12" y2="4"/>
+                                            <line x1="6" y1="20" x2="6" y2="14"/>
+                                        </svg>
+                                    </span>
+                                    <h4>Your Progress</h4>
+                                </div>
+                            </div>
+
+                            <!-- Circular Donut Chart Progress Ring -->
+                            <div class="donut-chart-container">
+                                <svg class="donut-svg" viewBox="0 0 120 120">
+                                    <circle class="donut-track" cx="60" cy="60" r="50"/>
+                                    <circle class="donut-meter" id="progress-donut-meter" cx="60" cy="60" r="50"/>
+                                </svg>
+                                <div class="donut-center-label">
+                                    <span class="donut-fraction" id="donut-fraction">0/0</span>
+                                    <span class="donut-sublabel">Tasks Completed</span>
+                                </div>
+                            </div>
+
+                            <!-- Motivational Message Quote Pill -->
+                            <div class="motivational-pill-card">
+                                <p class="motivational-text">
+                                    "Great progress! Keep going and unlock your next level!"
+                                </p>
+                                <span class="trophy-emoji" aria-hidden="true">🏆</span>
+                            </div>
+                        </article>
+
+                        <!-- Achievements 2x2 Grid Card -->
+                        <article class="panel-card achievements-card">
+                            <div class="panel-card-header">
+                                <div class="panel-title-row">
+                                    <span class="panel-icon-gold" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                                            <path d="M4 22h16"/>
+                                            <path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"/>
+                                            <path d="M6 4h12v7a6 6 0 0 1-12 0V4z"/>
+                                        </svg>
+                                    </span>
+                                    <h4>Achievements</h4>
+                                </div>
+                                <span class="view-all-link">View All →</span>
+                            </div>
+
+                            <!-- 2x2 Achievement Badges Grid -->
+                            <div class="badges-grid-2x2">
+                                <!-- Badge 1: First Step -->
+                                <div class="badge-tile" id="badge-first-step" data-badge="first_step">
+                                    <div class="badge-icon-wrap icon-sneaker" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 16v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/>
+                                            <path d="M2 18h20v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2z"/>
+                                            <path d="M9 10l2 2m2-2l2 2"/>
+                                        </svg>
+                                    </div>
+                                    <div class="badge-tile-meta">
+                                        <span class="badge-title">First Step</span>
+                                        <span class="badge-sub">Complete 1 task</span>
+                                    </div>
+                                    <div class="badge-lock-status" aria-hidden="true"></div>
+                                </div>
+
+                                <!-- Badge 2: High Five -->
+                                <div class="badge-tile" id="badge-high-five" data-badge="high_five">
+                                    <div class="badge-icon-wrap icon-highfive" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                        </svg>
+                                    </div>
+                                    <div class="badge-tile-meta">
+                                        <span class="badge-title">High Five</span>
+                                        <span class="badge-sub">Complete 5 tasks</span>
+                                    </div>
+                                    <div class="badge-lock-status" aria-hidden="true"></div>
+                                </div>
+
+                                <!-- Badge 3: Task Explorer (100 XP) -->
+                                <div class="badge-tile" id="badge-task-explorer" data-badge="task_explorer">
+                                    <div class="badge-icon-wrap icon-explorer" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+                                        </svg>
+                                    </div>
+                                    <div class="badge-tile-meta">
+                                        <span class="badge-title">Task Explorer</span>
+                                        <span class="badge-sub">Reach 100 XP</span>
+                                    </div>
+                                    <div class="badge-lock-status" aria-hidden="true"></div>
+                                </div>
+
+                                <!-- Badge 4: Productivity Champion (200 XP) -->
+                                <div class="badge-tile" id="badge-prod-champion" data-badge="productivity_champion">
+                                    <div class="badge-icon-wrap icon-crown" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M2 4l3 12h14l3-12-5 4-5-6-5 6-5-4z"/>
+                                            <path d="M5 20h14"/>
+                                        </svg>
+                                    </div>
+                                    <div class="badge-tile-meta">
+                                        <span class="badge-title">Productivity Champion</span>
+                                        <span class="badge-sub">Reach 200 XP</span>
+                                    </div>
+                                    <div class="badge-lock-status" aria-hidden="true"></div>
+                                </div>
+                            </div>
+                        </article>
+                    </aside>
+                </div>
+            </main>
+
+            <!-- =========================================================
+                 VIEW 2: AI PLANNER PAGE
+                 ========================================================= -->
+            <main id="planner-view" class="page-view" aria-label="AI Task Planner" hidden>
+                <!-- AI Planner Welcome Banner with Robot Mascot -->
+                <section class="welcome-banner planner-banner">
+                    <div class="banner-content">
+                        <span class="banner-greeting">AI Planner</span>
+                        <h1 class="banner-title">
+                            Turn your big goals into <span class="highlight-blue">small, actionable steps.</span>
+                        </h1>
+                        <p class="banner-subtitle">
+                            Tell me what you want to achieve, and I'll break it down into 5 personalized tasks for you.
+                        </p>
+                    </div>
+
+                    <!-- Friendly AI Robot Character Illustration with Speech Bubble -->
+                    <div class="planner-robot-hero" aria-hidden="true">
+                        <div class="robot-speech-bubble">
+                            <span class="sparkle-star">✦</span>
+                            "Share your goal and I'll create a step-by-step plan to make it happen!"
+                            <span class="sparkle-star">✦</span>
+                        </div>
+
+                        <!-- Illustrated Robot SVG Mascot -->
+                        <div class="robot-svg-wrap">
+                            <svg viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Antenna -->
+                                <circle cx="80" cy="18" r="7" fill="#38BDF8"/>
+                                <rect x="78" y="24" width="4" height="14" fill="#93C5FD"/>
+                                <!-- Head -->
+                                <rect x="36" y="36" width="88" height="58" rx="26" fill="#FFFFFF" stroke="#93C5FD" stroke-width="3"/>
+                                <!-- Screen / Face visor -->
+                                <rect x="44" y="44" width="72" height="42" rx="18" fill="#1E3A8A"/>
+                                <!-- Happy Cyan Eyes -->
+                                <path d="M56 65C56 61.5 59.5 58 64 58C68.5 58 72 61.5 72 65" stroke="#38BDF8" stroke-width="4.5" stroke-linecap="round"/>
+                                <path d="M88 65C88 61.5 91.5 58 96 58C100.5 58 104 61.5 104 65" stroke="#38BDF8" stroke-width="4.5" stroke-linecap="round"/>
+                                <!-- Cheeks -->
+                                <circle cx="52" cy="74" r="3.5" fill="#F472B6" opacity="0.8"/>
+                                <circle cx="108" cy="74" r="3.5" fill="#F472B6" opacity="0.8"/>
+                                <!-- Body -->
+                                <rect x="46" y="98" width="68" height="38" rx="16" fill="#F0F9FF" stroke="#93C5FD" stroke-width="3"/>
+                                <circle cx="80" cy="116" r="8" fill="#38BDF8" opacity="0.4"/>
+                                <circle cx="80" cy="116" r="4" fill="#0284C7"/>
+                                <!-- Waving Right Arm -->
+                                <path d="M116 102C128 96 138 84 144 72C146 68 142 64 138 66C133 68 126 78 120 86" fill="#60A5FA" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round"/>
+                                <!-- Left Arm resting -->
+                                <path d="M44 102C34 108 28 116 26 124" stroke="#93C5FD" stroke-width="4" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Planner 2-Column Grid -->
+                <div class="planner-grid">
+                    <!-- Left Column: Goal Input Card -->
+                    <section class="planner-card goal-input-card">
+                        <div class="planner-card-header">
+                            <span class="header-icon-box" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="6"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                </svg>
+                            </span>
+                            <h3>Your Goal</h3>
+                        </div>
+
+                        <form id="plan-form" class="goal-form">
+                            <div class="textarea-container">
+                                <textarea
+                                    id="plan-goal"
+                                    name="goal"
+                                    class="goal-textarea"
+                                    placeholder="What would you like to achieve?"
+                                    maxlength="500"
+                                    required
+                                    rows="4"
+                                ></textarea>
+                                <span class="char-count" id="goal-char-count">0/500</span>
+                            </div>
+
+                            <!-- Example Goal Chips -->
+                            <div class="example-chips-block">
+                                <span class="chips-label">Try an example:</span>
+                                <div class="chips-row">
+                                    <button type="button" class="goal-chip" data-example="Learn web development">
+                                        Learn web development
+                                    </button>
+                                    <button type="button" class="goal-chip" data-example="Prepare for an exam">
+                                        Prepare for an exam
+                                    </button>
+                                    <button type="button" class="goal-chip" data-example="Start a fitness routine">
+                                        Start a fitness routine
+                                    </button>
+                                    <button type="button" class="goal-chip" data-example="Build a mobile app">
+                                        Build a mobile app
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Generate Plan Action Button -->
+                            <button type="submit" class="btn-generate-plan" id="generate-plan-button">
+                                <span class="sparkle-icon" aria-hidden="true">✨</span>
+                                <span id="generate-button-text">Generate Plan →</span>
+                            </button>
+                        </form>
+
+                        <div id="plan-message" class="plan-status-message" role="status" aria-live="polite" hidden></div>
+                    </section>
+
+                    <!-- Right Column: Generated Plan Card -->
+                    <section class="planner-card generated-plan-card">
+                        <div class="planner-card-header">
+                            <div class="plan-header-title-row">
+                                <span class="header-icon-box" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                    </svg>
+                                </span>
+                                <h3 id="plan-card-heading">Generated Plan (5 tasks)</h3>
+                            </div>
+                        </div>
+
+                        <!-- Placeholder Empty State (when no plan is generated yet) -->
+                        <div id="plan-empty-state" class="plan-empty-state">
+                            <div class="empty-robot-illustration" aria-hidden="true">
+                                <svg viewBox="0 0 72 72" fill="none">
+                                    <circle cx="36" cy="36" r="32" fill="#E0F2FE"/>
+                                    <path d="M24 28H48V46H24Z" rx="8" fill="#38BDF8"/>
+                                    <circle cx="30" cy="36" r="3" fill="#FFFFFF"/>
+                                    <circle cx="42" cy="36" r="3" fill="#FFFFFF"/>
+                                    <line x1="36" y1="16" x2="36" y2="24" stroke="#0284C7" stroke-width="3" stroke-linecap="round"/>
+                                    <circle cx="36" cy="14" r="3" fill="#0284C7"/>
+                                </svg>
+                            </div>
+                            <h4>Your plan will appear here</h4>
+                            <p>Enter your goal on the left and click <strong>Generate Plan</strong> to create your 5-day step-by-step roadmap.</p>
+                        </div>
+
+                        <!-- Generated Plan Task List Area (shown after generation) -->
+                        <div id="plan-output" hidden>
+                            <ul id="plan-task-list" class="plan-task-rows" aria-label="Generated 5-day plan tasks"></ul>
+
+                            <!-- Bottom Action Bar -->
+                            <div class="plan-bottom-actions">
+                                <label class="select-all-container">
+                                    <input type="checkbox" id="plan-select-all-checkbox" checked>
+                                    <span>Select All</span>
+                                </label>
+
+                                <button type="button" class="btn-add-selected" id="add-selected-button">
+                                    <span class="plus-sign" aria-hidden="true">+</span>
+                                    Add Selected Tasks to Dashboard
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+
+            <!-- Shared Footer -->
+            <footer class="app-footer">
+                <p>TaskFlow Quest · AWS Serverless Architecture (Lambda · API Gateway · DynamoDB · Amazon Bedrock)</p>
+            </footer>
+        </div>
     </div>
 
-    <!-- Toast container for notifications -->
+    <!-- =========================================================
+         ADD TASK MODAL (Accessible Dialog)
+         ========================================================= -->
+    <div class="modal-backdrop" id="add-task-modal" role="dialog" aria-modal="true" aria-labelledby="add-modal-title" hidden>
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="add-modal-title">Create New Task</h3>
+                <button type="button" class="modal-close-btn" id="close-add-modal-btn" aria-label="Close modal">✕</button>
+            </div>
+            <form id="task-form" class="modal-form">
+                <div class="form-group">
+                    <label for="task-title">Task Title</label>
+                    <input
+                        type="text"
+                        id="task-title"
+                        name="title"
+                        placeholder="e.g. Research project requirements"
+                        maxlength="200"
+                        required
+                    >
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="task-priority-select">Priority</label>
+                        <select id="task-priority-select" name="priority">
+                            <option value="High">High</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="task-due-date">Due Date</label>
+                        <input type="date" id="task-due-date" name="dueDate">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancel-add-task-btn">Cancel</button>
+                    <button type="submit" class="btn-submit-modal" id="add-task-button">Add Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         EDIT TASK MODAL (Accessible Dialog)
+         ========================================================= -->
+    <div class="modal-backdrop" id="edit-task-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" hidden>
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="edit-modal-title">Edit Task</h3>
+                <button type="button" class="modal-close-btn" id="close-edit-modal-btn" aria-label="Close modal">✕</button>
+            </div>
+            <form id="edit-task-form" class="modal-form">
+                <input type="hidden" id="edit-task-id">
+                <div class="form-group">
+                    <label for="edit-task-title">Task Title</label>
+                    <input
+                        type="text"
+                        id="edit-task-title"
+                        name="title"
+                        maxlength="200"
+                        required
+                    >
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="edit-task-priority">Priority</label>
+                        <select id="edit-task-priority" name="priority">
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-task-due">Due Date</label>
+                        <input type="date" id="edit-task-due" name="dueDate">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="cancel-edit-task-btn">Cancel</button>
+                    <button type="submit" class="btn-submit-modal" id="save-edit-task-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
     <div id="quest-toast-container" class="quest-toast-container" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

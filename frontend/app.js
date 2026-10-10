@@ -1,70 +1,156 @@
+/**
+ * TaskFlow Quest - Frontend Application Script
+ * Full Two-Page SPA Implementation (Dashboard & AI Planner)
+ * Backed by AWS API Gateway, Lambda, DynamoDB, and Amazon Bedrock
+ */
 
 const API_URL = "https://emx62ryde0.execute-api.ap-south-1.amazonaws.com";
+const XP_PER_TASK = 20;
 
-// HTML elements
-const taskForm = document.getElementById("task-form");
-const taskTitleInput = document.getElementById("task-title");
-const taskList = document.getElementById("task-list");
-const totalTasksElement = document.getElementById("total-tasks");
-const completedActionsElement = document.getElementById("completed-actions");
-const taskCountElement = document.getElementById("task-count");
-const refreshButton = document.getElementById("refresh-button");
-const addTaskButton = document.getElementById("add-task-button");
-const messageElement = document.getElementById("message");
+// =============================================================================
+// DOM Elements Selection
+// =============================================================================
+
+// Navigation & Views
+const navDashboard = document.getElementById("nav-dashboard");
+const navPlanner = document.getElementById("nav-planner");
+const dashboardView = document.getElementById("dashboard-view");
+const plannerView = document.getElementById("planner-view");
+const sidebarQuote = document.getElementById("sidebar-quote");
+const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+const sidebarCloseBtn = document.getElementById("sidebar-close-btn");
+const appSidebar = document.getElementById("app-sidebar");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+// Topbar Status
 const connectionStatus = document.getElementById("connection-status");
 const connectionText = document.getElementById("connection-text");
+const globalMessage = document.getElementById("message");
+const notificationBtn = document.getElementById("notification-btn");
 
-// Quest gamification HTML elements
+// Dashboard Stat Cards
 const questLevelCard = document.getElementById("quest-level-card");
-const questLevelEmblem = document.getElementById("quest-level-emblem");
 const questLevelTier = document.getElementById("quest-level-tier");
 const questLevelTitle = document.getElementById("quest-level-title");
-const questTotalXp = document.getElementById("quest-total-xp");
-const questCompletedCount = document.getElementById("quest-completed-count");
-const questProgressText = document.getElementById("quest-progress-text");
+const questXpDisplay = document.getElementById("quest-xp-display");
 const questProgressbar = document.getElementById("quest-progressbar");
 const questProgressFill = document.getElementById("quest-progress-fill");
-const questBadgesGrid = document.getElementById("quest-badges-grid");
-const questBadgesUnlockedCount = document.getElementById("quest-badges-unlocked-count");
+const questProgressText = document.getElementById("quest-progress-text");
+const totalTasksEl = document.getElementById("total-tasks");
+const completedTasksCountEl = document.getElementById("completed-tasks-count");
+const completionRateEl = document.getElementById("completion-rate");
+
+// Dashboard Task Controls & List
+const taskSearchInput = document.getElementById("task-search-input");
+const openAddTaskModalBtn = document.getElementById("open-add-task-modal-btn");
+const filterTabAll = document.getElementById("filter-tab-all");
+const filterTabActive = document.getElementById("filter-tab-active");
+const filterTabCompleted = document.getElementById("filter-tab-completed");
+const filterCountAll = document.getElementById("filter-count-all");
+const filterCountActive = document.getElementById("filter-count-active");
+const filterCountCompleted = document.getElementById("filter-count-completed");
+const taskList = document.getElementById("task-list");
+
+// Dashboard Progress & Badges Panel
+const progressDonutMeter = document.getElementById("progress-donut-meter");
+const donutFraction = document.getElementById("donut-fraction");
+const badgeFirstStep = document.getElementById("badge-first-step");
+const badgeHighFive = document.getElementById("badge-high-five");
+const badgeTaskExplorer = document.getElementById("badge-task-explorer");
+const badgeProdChampion = document.getElementById("badge-prod-champion");
+
+// AI Planner Elements
+const planForm = document.getElementById("plan-form");
+const planGoalInput = document.getElementById("plan-goal");
+const goalCharCount = document.getElementById("goal-char-count");
+const generatePlanButton = document.getElementById("generate-plan-button");
+const generateButtonText = document.getElementById("generate-button-text");
+const planMessageElement = document.getElementById("plan-message");
+const planEmptyState = document.getElementById("plan-empty-state");
+const planOutput = document.getElementById("plan-output");
+const planTaskList = document.getElementById("plan-task-list");
+const planSelectAllCheckbox = document.getElementById("plan-select-all-checkbox");
+const addSelectedButton = document.getElementById("add-selected-button");
+const goalChips = document.querySelectorAll(".goal-chip");
+
+// Modals
+const addTaskModal = document.getElementById("add-task-modal");
+const closeAddModalBtn = document.getElementById("close-add-modal-btn");
+const cancelAddTaskBtn = document.getElementById("cancel-add-task-btn");
+const taskForm = document.getElementById("task-form");
+const taskTitleInput = document.getElementById("task-title");
+const taskPrioritySelect = document.getElementById("task-priority-select");
+const taskDueDateInput = document.getElementById("task-due-date");
+const addTaskSubmitBtn = document.getElementById("add-task-button");
+
+const editTaskModal = document.getElementById("edit-task-modal");
+const closeEditModalBtn = document.getElementById("close-edit-modal-btn");
+const cancelEditTaskBtn = document.getElementById("cancel-edit-task-btn");
+const editTaskForm = document.getElementById("edit-task-form");
+const editTaskIdInput = document.getElementById("edit-task-id");
+const editTaskTitleInput = document.getElementById("edit-task-title");
+const editTaskPrioritySelect = document.getElementById("edit-task-priority");
+const editTaskDueInput = document.getElementById("edit-task-due");
+
+// Toast Notifications Container
 const questToastContainer = document.getElementById("quest-toast-container");
 
-// Gamification state (in-memory prototype session progress)
-const XP_PER_TASK = 20;
+// =============================================================================
+// Application State
+// =============================================================================
+let currentTasks = [];
+let currentFilter = "all"; // 'all' | 'active' | 'completed'
+let searchQuery = "";
 const completedTaskIds = new Set();
 const pendingTaskUpdates = new Set();
 const unlockedBadgeIds = new Set();
 let currentLevelName = "Beginner";
-let completedActions = 0;
 
-// SVG Emblems for Levels
-const LEVEL_EMBLEMS = {
-    beginner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>`,
-    taskExplorer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>`,
-    productivityChampion: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M6 4h12v7a6 6 0 0 1-12 0V4z"></path></svg>`
-};
-
-// SVG Icons for Badges
-const BADGE_ICONS = {
-    firstStep: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline><path d="m9 12 2 2 4-4"></path></svg>`,
-    highFive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`
-};
-
-// Safely render SVG content into an element using DOMParser
-function setSvgContent(element, svgString) {
-    if (!element || !svgString) return;
+// Client metadata store (for Priority & Due Date persistence across sessions)
+const TASK_META_KEY = "taskflow_tasks_meta";
+function loadTaskMeta() {
     try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgString, "image/svg+xml");
-        const svgEl = doc.querySelector("svg");
-        if (svgEl) {
-            element.replaceChildren(svgEl);
-        }
+        const raw = localStorage.getItem(TASK_META_KEY);
+        return raw ? JSON.parse(raw) : {};
     } catch {
-        element.textContent = "★";
+        return {};
     }
 }
 
-// Show friendly toast notifications
+function saveTaskMeta(meta) {
+    try {
+        localStorage.setItem(TASK_META_KEY, JSON.stringify(meta));
+    } catch (e) {
+        console.warn("Could not save task metadata to localStorage:", e);
+    }
+}
+
+let taskMetadataStore = loadTaskMeta();
+
+function getTaskMetadata(task, index = 0) {
+    if (taskMetadataStore[task.id]) {
+        return taskMetadataStore[task.id];
+    }
+    // Generate deterministic default priority and date if none exists
+    const priorities = ["High", "Medium", "Low", "Medium", "High"];
+    const priority = priorities[index % priorities.length];
+    
+    // Default due date from createdAt + 3 days
+    const created = new Date(task.createdAt);
+    const dueDateObj = Number.isNaN(created.getTime()) ? new Date() : new Date(created.getTime() + 86400000 * 3);
+    const dueDateStr = dueDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const rawDateStr = dueDateObj.toISOString().split("T")[0];
+
+    const meta = { priority, dueDate: dueDateStr, rawDueDate: rawDateStr };
+    taskMetadataStore[task.id] = meta;
+    saveTaskMeta(taskMetadataStore);
+    return meta;
+}
+
+// =============================================================================
+// Helper Utilities & Notifications
+// =============================================================================
+
 function showToast(title, description, icon = "⭐", variant = "") {
     if (!questToastContainer) return;
 
@@ -95,7 +181,7 @@ function showToast(title, description, icon = "⭐", variant = "") {
     closeBtn.textContent = "×";
     closeBtn.addEventListener("click", () => {
         toast.classList.add("toast-fade-out");
-        setTimeout(() => toast.remove(), 300);
+        setTimeout(() => toast.remove(), 250);
     });
 
     toast.append(iconSpan, bodyDiv, closeBtn);
@@ -104,694 +190,709 @@ function showToast(title, description, icon = "⭐", variant = "") {
     setTimeout(() => {
         if (toast.isConnected) {
             toast.classList.add("toast-fade-out");
-            setTimeout(() => toast.remove(), 300);
+            setTimeout(() => toast.remove(), 250);
         }
     }, 4500);
 }
 
-// Show floating +20 XP reward animation anchored on the completed card
+function showGlobalMessage(message, type = "info") {
+    if (!globalMessage) return;
+    globalMessage.textContent = message;
+    globalMessage.className = `global-banner-message ${type}`;
+    globalMessage.hidden = false;
+    setTimeout(() => {
+        if (globalMessage.textContent === message) {
+            globalMessage.hidden = true;
+        }
+    }, 5000);
+}
+
 function triggerFloatingXpReward(targetElement, text = "+20 XP") {
     if (!targetElement) return;
-
     const pill = document.createElement("div");
     pill.className = "floating-xp-pill";
     pill.textContent = text;
     targetElement.appendChild(pill);
 
     setTimeout(() => {
-        if (pill.isConnected) {
-            pill.remove();
-        }
-    }, 1300);
+        if (pill.isConnected) pill.remove();
+    }, 1200);
 }
 
-// Compute level, progress, and badges from accumulated XP and completed tasks
-function computeQuestProfile(totalXp, completedCount) {
-    const validXp = Math.max(0, totalXp);
-    const validCount = Math.max(0, completedCount);
+function updateConnectionStatus(connected) {
+    if (!connectionStatus || !connectionText) return;
+    connectionStatus.classList.toggle("disconnected", !connected);
+    connectionText.textContent = connected ? "AWS Connected" : "Connection Offline";
+}
 
-    let level = "Beginner";
-    let tier = "LEVEL 1";
-    let cardClass = "level-beginner";
-    let emblemKey = "beginner";
-    let progressPercent = 0;
-    let progressText = "";
+// API Request Wrapper
+async function apiRequest(path, options = {}) {
+    const response = await fetch(`${API_URL}${path}`, options);
+    const data = await response.json();
 
-    if (validXp >= 200) {
-        level = "Productivity Champion";
-        tier = "LEVEL 3";
-        cardClass = "level-productivity-champion";
-        emblemKey = "productivityChampion";
-        progressPercent = 100;
-        progressText = "Max level achieved! Productivity Champion";
-    } else if (validXp >= 100) {
-        level = "Task Explorer";
-        tier = "LEVEL 2";
-        cardClass = "level-task-explorer";
-        emblemKey = "taskExplorer";
-        const rem = 200 - validXp;
-        progressPercent = Math.min(100, Math.round(((validXp - 100) / 100) * 100));
-        progressText = `${rem} XP to Productivity Champion`;
+    if (!response.ok) {
+        throw new Error(data.message || `API request failed with status ${response.status}`);
+    }
+    return data;
+}
+
+// =============================================================================
+// Navigation & SPA Router
+// =============================================================================
+
+function switchView(viewName) {
+    const isDashboard = viewName === "dashboard";
+
+    if (isDashboard) {
+        dashboardView.hidden = false;
+        dashboardView.classList.add("active");
+        plannerView.hidden = true;
+        plannerView.classList.remove("active");
+
+        navDashboard.classList.add("active");
+        navPlanner.classList.remove("active");
+
+        if (sidebarQuote) {
+            sidebarQuote.textContent = '"Small steps today, bigger adventures tomorrow."';
+        }
     } else {
-        level = "Beginner";
-        tier = "LEVEL 1";
-        cardClass = "level-beginner";
-        emblemKey = "beginner";
-        const rem = 100 - validXp;
-        progressPercent = Math.min(100, Math.round((validXp / 100) * 100));
-        progressText = `${rem} XP to Task Explorer`;
+        dashboardView.hidden = true;
+        dashboardView.classList.remove("active");
+        plannerView.hidden = false;
+        plannerView.classList.add("active");
+
+        navDashboard.classList.remove("active");
+        navPlanner.classList.add("active");
+
+        if (sidebarQuote) {
+            sidebarQuote.textContent = '"Big goals start with a single step."';
+        }
     }
 
-    const firstStepUnlocked = validCount >= 1;
-    const highFiveUnlocked = validCount >= 5;
+    // Close mobile sidebar if open
+    closeMobileSidebar();
 
-    const badges = [
-        {
-            id: "first_step",
-            name: "First Step",
-            description: "Completed your first task",
-            unlocked: firstStepUnlocked,
-            progressLabel: firstStepUnlocked ? "Unlocked" : "0 / 1"
-        },
-        {
-            id: "high_five",
-            name: "High Five",
-            description: "Completed five unique tasks",
-            unlocked: highFiveUnlocked,
-            progressLabel: highFiveUnlocked ? "Unlocked" : `${Math.min(5, validCount)} / 5`
-        }
-    ];
+    // Update URL hash without reload
+    window.location.hash = isDashboard ? "#dashboard" : "#planner";
+}
+
+function openMobileSidebar() {
+    appSidebar.classList.add("open");
+    sidebarOverlay.classList.add("active");
+}
+
+function closeMobileSidebar() {
+    appSidebar.classList.remove("open");
+    sidebarOverlay.classList.remove("active");
+}
+
+navDashboard.addEventListener("click", () => switchView("dashboard"));
+navPlanner.addEventListener("click", () => switchView("planner"));
+
+if (mobileMenuBtn) mobileMenuBtn.addEventListener("click", openMobileSidebar);
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener("click", closeMobileSidebar);
+if (sidebarOverlay) sidebarOverlay.addEventListener("click", closeMobileSidebar);
+
+// Restore view from URL hash on load
+window.addEventListener("hashchange", () => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash === "#planner") {
+        switchView("planner");
+    } else {
+        switchView("dashboard");
+    }
+});
+
+// =============================================================================
+// Gamification Engine (XP, Levels, Badges, Donut Chart)
+// =============================================================================
+
+function computeQuestProfile(completedCount) {
+    const count = Math.max(0, completedCount);
+    const totalXp = count * XP_PER_TASK;
+
+    let levelName = "Beginner";
+    let tierText = "Level 1";
+    let progressPercent = 0;
+    let progressText = "";
+    let xpDisplay = `${totalXp} / 100 XP`;
+
+    if (totalXp >= 200) {
+        levelName = "Productivity Champion";
+        tierText = "Level 3";
+        progressPercent = 100;
+        progressText = "Max level achieved! 🏆";
+        xpDisplay = `${totalXp} XP (Mastered)`;
+    } else if (totalXp >= 100) {
+        levelName = "Task Explorer";
+        tierText = "Level 2";
+        const needed = 200 - totalXp;
+        progressPercent = Math.min(100, Math.round(((totalXp - 100) / 100) * 100));
+        progressText = `${needed} XP to reach Level 3`;
+        xpDisplay = `${totalXp} / 200 XP`;
+    } else {
+        levelName = "Beginner";
+        tierText = "Level 1";
+        const needed = 100 - totalXp;
+        progressPercent = Math.min(100, Math.round((totalXp / 100) * 100));
+        progressText = `${needed} XP to reach Level 2`;
+        xpDisplay = `${totalXp} / 100 XP`;
+    }
+
+    const firstStepUnlocked = count >= 1;
+    const highFiveUnlocked = count >= 5;
+    const taskExplorerUnlocked = totalXp >= 100;
+    const prodChampionUnlocked = totalXp >= 200;
 
     return {
-        totalXp: validXp,
-        completedCount: validCount,
-        level,
-        tier,
-        cardClass,
-        emblemKey,
+        totalXp,
+        completedCount: count,
+        levelName,
+        tierText,
         progressPercent,
         progressText,
-        badges
+        xpDisplay,
+        badges: {
+            firstStep: firstStepUnlocked,
+            highFive: highFiveUnlocked,
+            taskExplorer: taskExplorerUnlocked,
+            prodChampion: prodChampionUnlocked
+        }
     };
 }
 
-// Compute quest profile strictly from the currently completed tasks in session
-function computeQuestProfileFromCompletedTasks() {
-    const completedCount = completedTaskIds.size;
-    const totalXp = Math.max(0, completedCount * XP_PER_TASK);
-    return computeQuestProfile(totalXp, completedCount);
-}
-
-
-// Render the Quest Dashboard
-function renderQuestDashboard(questData) {
-    if (!questLevelCard) return;
-
-    questLevelCard.className = `quest-level-card ${questData.cardClass}`;
-    if (questLevelTier) questLevelTier.textContent = questData.tier;
-    if (questLevelTitle) questLevelTitle.textContent = questData.level;
-
-    if (questLevelEmblem) {
-        setSvgContent(questLevelEmblem, LEVEL_EMBLEMS[questData.emblemKey]);
-    }
-
-    if (questTotalXp) questTotalXp.textContent = questData.totalXp;
-    if (questCompletedCount) questCompletedCount.textContent = questData.completedCount;
-
+function updateGamificationDisplay(questData) {
+    if (questLevelTier) questLevelTier.textContent = questData.tierText;
+    if (questLevelTitle) questLevelTitle.textContent = questData.levelName;
+    if (questXpDisplay) questXpDisplay.textContent = questData.xpDisplay;
     if (questProgressText) questProgressText.textContent = questData.progressText;
-    if (questProgressbar) {
-        questProgressbar.setAttribute("aria-valuenow", questData.progressPercent);
-    }
+
     if (questProgressFill) {
         questProgressFill.style.width = `${questData.progressPercent}%`;
     }
+    if (questProgressbar) {
+        questProgressbar.setAttribute("aria-valuenow", questData.progressPercent);
+    }
 
-    if (questBadgesGrid) {
-        questBadgesGrid.replaceChildren();
-        const unlockedCount = questData.badges.filter((b) => b.unlocked).length;
-        if (questBadgesUnlockedCount) {
-            questBadgesUnlockedCount.textContent = `${unlockedCount} / ${questData.badges.length} Unlocked`;
-        }
+    // Update 4 Achievements Badges
+    updateBadgeElement(badgeFirstStep, questData.badges.firstStep);
+    updateBadgeElement(badgeHighFive, questData.badges.highFive);
+    updateBadgeElement(badgeTaskExplorer, questData.badges.taskExplorer);
+    updateBadgeElement(badgeProdChampion, questData.badges.prodChampion);
 
-        questData.badges.forEach((badge) => {
-            const card = document.createElement("article");
-            card.className = `quest-badge-card ${badge.unlocked ? "unlocked" : "locked"}`;
-            card.setAttribute("role", "listitem");
+    // Update Circular Donut Chart
+    const totalCount = currentTasks.length;
+    const completedCount = questData.completedCount;
+    if (donutFraction) {
+        donutFraction.textContent = `${completedCount}/${totalCount}`;
+    }
 
-            const iconBox = document.createElement("div");
-            iconBox.className = "quest-badge-icon-box";
-            iconBox.setAttribute("aria-hidden", "true");
-            setSvgContent(
-                iconBox,
-                badge.id === "first_step" ? BADGE_ICONS.firstStep : BADGE_ICONS.highFive
-            );
+    if (progressDonutMeter) {
+        // Circumference for r=50 is 2 * PI * 50 = ~314.159
+        const circumference = 314.159;
+        const rate = totalCount > 0 ? completedCount / totalCount : 0;
+        const offset = circumference - rate * circumference;
+        progressDonutMeter.style.strokeDashoffset = `${offset}`;
+    }
 
-            const details = document.createElement("div");
-            details.className = "quest-badge-details";
-
-            const titleRow = document.createElement("div");
-            titleRow.className = "quest-badge-title-row";
-
-            const name = document.createElement("h5");
-            name.className = "quest-badge-name";
-            name.textContent = badge.name;
-
-            const pill = document.createElement("span");
-            pill.className = "quest-badge-status-pill";
-            pill.textContent = badge.progressLabel;
-
-            titleRow.append(name, pill);
-
-            const desc = document.createElement("p");
-            desc.className = "quest-badge-desc";
-            desc.textContent = badge.description;
-
-            details.append(titleRow, desc);
-            card.append(iconBox, details);
-            questBadgesGrid.appendChild(card);
-        });
+    // Update Total Tasks, Completed, and Rate Cards
+    if (totalTasksEl) totalTasksEl.textContent = totalCount;
+    if (completedTasksCountEl) completedTasksCountEl.textContent = completedCount;
+    if (completionRateEl) {
+        const ratePct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        completionRateEl.textContent = `${ratePct}%`;
     }
 }
 
-// Check for Level-Up and Badge Unlock milestones
-function checkGamificationMilestones(newQuestData, isCompleting = true) {
+function updateBadgeElement(badgeEl, isUnlocked) {
+    if (!badgeEl) return;
+    badgeEl.classList.toggle("unlocked", isUnlocked);
+}
+
+function checkMilestones(questData, isCompleting = true) {
     if (!isCompleting) {
-        // When uncompleting or silently syncing, update level and unlocked badges without firing celebration toasts
-        currentLevelName = newQuestData.level;
+        currentLevelName = questData.levelName;
         unlockedBadgeIds.clear();
-        newQuestData.badges.forEach((b) => {
-            if (b.unlocked) unlockedBadgeIds.add(b.id);
+        Object.entries(questData.badges).forEach(([id, unlocked]) => {
+            if (unlocked) unlockedBadgeIds.add(id);
         });
         return;
     }
 
-    const levelRanks = { "Beginner": 1, "Task Explorer": 2, "Productivity Champion": 3 };
-    if (currentLevelName && (levelRanks[newQuestData.level] || 0) > (levelRanks[currentLevelName] || 0)) {
+    const rankMap = { "Beginner": 1, "Task Explorer": 2, "Productivity Champion": 3 };
+    if (currentLevelName && rankMap[questData.levelName] > rankMap[currentLevelName]) {
         showToast(
-            `Level Up! 🎉`,
-            `You reached ${newQuestData.level}! Keep crushing your goals.`,
+            "Level Up! 🎉",
+            `You advanced to ${questData.levelName}! Outstanding accomplishment!`,
             "🏆",
             "toast-level-up"
         );
     }
-    currentLevelName = newQuestData.level;
+    currentLevelName = questData.levelName;
 
-    newQuestData.badges.forEach((badge) => {
-        if (badge.unlocked && !unlockedBadgeIds.has(badge.id)) {
-            unlockedBadgeIds.add(badge.id);
-            showToast(
-                `Badge Unlocked! 🌟`,
-                `${badge.name}: ${badge.description}`,
-                "🎖️",
-                "toast-badge"
-            );
-        } else if (!badge.unlocked && unlockedBadgeIds.has(badge.id)) {
-            unlockedBadgeIds.delete(badge.id);
+    const badgeLabels = {
+        firstStep: "First Step: Completed 1 task!",
+        highFive: "High Five: Completed 5 tasks!",
+        taskExplorer: "Task Explorer: Reached 100 XP milestone!",
+        prodChampion: "Productivity Champion: Master of Tasks (200 XP)!"
+    };
+
+    Object.entries(questData.badges).forEach(([id, unlocked]) => {
+        if (unlocked && !unlockedBadgeIds.has(id)) {
+            unlockedBadgeIds.add(id);
+            showToast("Achievement Unlocked! 🎖️", badgeLabels[id] || id, "🌟", "toast-badge");
+        } else if (!unlocked && unlockedBadgeIds.has(id)) {
+            unlockedBadgeIds.delete(id);
         }
     });
 }
 
-// Update or toggle XP status badge on a task card
-function updateTaskXpPill(taskItem, isCompleted) {
-    const dateEl = taskItem.querySelector(".task-date");
-    if (!dateEl) return;
-    const existingPill = dateEl.querySelector(".task-xp-pill");
+// =============================================================================
+// Task Management (Fetch, Filter, Render, Toggle, Add, Edit, Delete)
+// =============================================================================
 
-    if (isCompleted && !existingPill) {
-        const xpPill = document.createElement("span");
-        xpPill.className = "task-xp-pill";
-        xpPill.textContent = "Completed (+20 XP)";
-        dateEl.appendChild(xpPill);
-    } else if (!isCompleted && existingPill) {
-        existingPill.remove();
-    }
-}
-
-// Handle task completion toggle with PATCH /tasks/{id}
-async function handleTaskToggle(task, checkbox, taskItem) {
-    const isNowCompleted = checkbox.checked;
-
-    // Prevent duplicate in-flight requests for this task
-    if (pendingTaskUpdates.has(task.id)) {
-        checkbox.checked = !isNowCompleted;
-        return;
-    }
-
-    // Ignore if target state already matches task state
-    if (Boolean(task.completed) === isNowCompleted) {
-        return;
-    }
-
-    pendingTaskUpdates.add(task.id);
-    checkbox.disabled = true;
-
-    try {
-        const responseData = await apiRequest(`/tasks/${encodeURIComponent(task.id)}`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ completed: isNowCompleted })
-        });
-
-        task.completed = isNowCompleted;
-        if (responseData?.task?.completed !== undefined) {
-            task.completed = Boolean(responseData.task.completed);
-        }
-
-        taskItem.classList.toggle("completed", task.completed);
-        checkbox.checked = task.completed;
-        checkbox.setAttribute(
-            "aria-label",
-            `Mark task "${task.title}" as ${task.completed ? "incomplete" : "complete"}`
-        );
-
-        updateTaskXpPill(taskItem, task.completed);
-
-        if (task.completed) {
-            // Task checked: add to completed set and show floating reward
-            completedTaskIds.add(task.id);
-            triggerFloatingXpReward(taskItem, "+20 XP");
-        } else {
-            // Task unchecked: remove from completed set without floating reward
-            completedTaskIds.delete(task.id);
-        }
-
-        // Recalculate quest profile strictly based on current completed tasks
-        const updatedQuest = computeQuestProfileFromCompletedTasks();
-        renderQuestDashboard(updatedQuest);
-
-        // Update milestones (celebrate on completion, silently sync on uncompletion)
-        checkGamificationMilestones(updatedQuest, task.completed);
-
-        completedActions++;
-        updateActionCounter();
-
-    } catch (error) {
-        console.error("Failed to update task completion:", error);
-        // Restore previous checkbox and card state without altering XP
-        checkbox.checked = !isNowCompleted;
-        taskItem.classList.toggle("completed", !isNowCompleted);
-        showMessage(error.message || "Failed to update task completion status.", "error");
-    } finally {
-        pendingTaskUpdates.delete(task.id);
-        checkbox.disabled = false;
-    }
-}
-
-// Show success or error messages
-function showMessage(message, type) {
-    messageElement.textContent = message;
-    messageElement.className = `message ${type}`;
-    messageElement.hidden = false;
-}
-
-// Hide the message
-function hideMessage() {
-    messageElement.hidden = true;
-    messageElement.textContent = "";
-}
-
-// Update API connection status
-function updateConnectionStatus(connected) {
-    connectionStatus.classList.toggle("connected", connected);
-    connectionStatus.classList.toggle("disconnected", !connected);
-
-    connectionText.textContent = connected
-        ? "Connected to AWS"
-        : "Connection unavailable";
-}
-
-// Update the action counter
-function updateActionCounter() {
-    completedActionsElement.textContent = completedActions;
-}
-
-// Make an API request and handle HTTP errors
-async function apiRequest(path, options = {}) {
-    const response = await fetch(`${API_URL}${path}`, options);
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data.message || "The request failed.");
-    }
-
-    return data;
-}
-
-// Load all tasks from DynamoDB through API Gateway
 async function loadTasks() {
     taskList.replaceChildren();
 
-    const loadingMessage = document.createElement("div");
-    loadingMessage.className = "loading-state";
-    loadingMessage.textContent = "Loading your tasks...";
-    taskList.appendChild(loadingMessage);
-
-    refreshButton.disabled = true;
-    hideMessage();
+    const loadingEl = document.createElement("div");
+    loadingEl.className = "loading-state";
+    loadingEl.innerHTML = `<div class="spinner"></div><p>Loading your tasks...</p>`;
+    taskList.appendChild(loadingEl);
 
     try {
         const data = await apiRequest("/tasks");
-        const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+        currentTasks = Array.isArray(data.tasks) ? data.tasks : [];
 
         updateConnectionStatus(true);
-        totalTasksElement.textContent = tasks.length;
-        taskCountElement.textContent =
-            `${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}`;
 
-        // Sync completedTaskIds with loaded completed tasks from DynamoDB
+        // Sync completed IDs
         completedTaskIds.clear();
-        tasks.forEach((t) => {
-            if (t.completed) {
-                completedTaskIds.add(t.id);
-            }
+        currentTasks.forEach((t) => {
+            if (t.completed) completedTaskIds.add(t.id);
         });
 
-        // Compute gamification state strictly from completed tasks
-        const questData = computeQuestProfileFromCompletedTasks();
-        checkGamificationMilestones(questData, false);
-        renderQuestDashboard(questData);
+        // Update gamification numbers
+        const questData = computeQuestProfile(completedTaskIds.size);
+        checkMilestones(questData, false);
+        updateGamificationDisplay(questData);
 
-        taskList.replaceChildren();
-
-        if (tasks.length === 0) {
-            const emptyMessage = document.createElement("div");
-            emptyMessage.className = "empty-state";
-            emptyMessage.textContent =
-                "No tasks yet. Add your first task above!";
-            taskList.appendChild(emptyMessage);
-            return;
-        }
-
-        // Display newest tasks first
-        tasks.sort((a, b) =>
-            new Date(b.createdAt) - new Date(a.createdAt)
-        );
-
-        tasks.forEach((task) => {
-            const taskItem = document.createElement("article");
-            taskItem.className = `task-item${task.completed ? " completed" : ""}`;
-
-            // Accessible completion checkbox
-            const checkboxWrapper = document.createElement("div");
-            checkboxWrapper.className = "task-checkbox-wrapper";
-
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.className = "task-checkbox";
-            checkbox.id = `task-chk-${task.id}`;
-            checkbox.checked = Boolean(task.completed);
-            checkbox.setAttribute(
-                "aria-label",
-                `Mark task "${task.title}" as ${task.completed ? "incomplete" : "complete"}`
-            );
-            checkbox.addEventListener("change", () =>
-                handleTaskToggle(task, checkbox, taskItem)
-            );
-
-            checkboxWrapper.appendChild(checkbox);
-
-            const taskDetails = document.createElement("div");
-            taskDetails.className = "task-details";
-
-            const title = document.createElement("h4");
-            title.className = "task-title";
-            title.textContent = task.title;
-
-            const date = document.createElement("p");
-            date.className = "task-date";
-
-            const parsedDate = new Date(task.createdAt);
-            date.textContent = Number.isNaN(parsedDate.getTime())
-                ? "Date unavailable"
-                : `Created ${parsedDate.toLocaleString()}`;
-
-            if (task.completed) {
-                const xpPill = document.createElement("span");
-                xpPill.className = "task-xp-pill";
-                xpPill.textContent = "Completed (+20 XP)";
-                date.appendChild(xpPill);
-            }
-
-            const deleteButton = document.createElement("button");
-            deleteButton.type = "button";
-            deleteButton.className = "delete-button";
-            deleteButton.textContent = "Delete";
-            deleteButton.setAttribute(
-                "aria-label",
-                `Delete task: ${task.title}`
-            );
-            deleteButton.dataset.taskId = task.id;
-
-            taskDetails.append(title, date);
-            taskItem.append(checkboxWrapper, taskDetails, deleteButton);
-            taskList.appendChild(taskItem);
-        });
+        renderTasks();
     } catch (error) {
+        console.error("Failed to fetch tasks:", error);
         updateConnectionStatus(false);
-        totalTasksElement.textContent = "—";
-        taskCountElement.textContent = "Unavailable";
-
         taskList.replaceChildren();
 
-        const errorMessage = document.createElement("div");
-        errorMessage.className = "empty-state";
-        errorMessage.textContent =
-            "Unable to load tasks. Check your connection and try again.";
-        taskList.appendChild(errorMessage);
-
-        showMessage(error.message, "error");
-        console.error("Failed to load tasks:", error);
-    } finally {
-        refreshButton.disabled = false;
+        const errorEl = document.createElement("div");
+        errorEl.className = "empty-state";
+        errorEl.innerHTML = `<p>Unable to connect to AWS task service.<br><small>${error.message}</small></p>`;
+        taskList.appendChild(errorEl);
+        showGlobalMessage("Could not load tasks from AWS. Please retry.", "error");
     }
 }
 
-// Create a task
-taskForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+function renderTasks() {
+    taskList.replaceChildren();
 
-    const title = taskTitleInput.value.trim();
+    // Sort newest first
+    currentTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    if (!title) {
-        showMessage("Please enter a task title.", "error");
+    // Calculate filter counts
+    const totalCount = currentTasks.length;
+    const activeCount = currentTasks.filter(t => !t.completed).length;
+    const completedCount = currentTasks.filter(t => t.completed).length;
+
+    if (filterCountAll) filterCountAll.textContent = totalCount;
+    if (filterCountActive) filterCountActive.textContent = activeCount;
+    if (filterCountCompleted) filterCountCompleted.textContent = completedCount;
+
+    // Apply active filter and search query
+    let filtered = currentTasks.filter(task => {
+        if (currentFilter === "active" && task.completed) return false;
+        if (currentFilter === "completed" && !task.completed) return false;
+        if (searchQuery) {
+            return task.title.toLowerCase().includes(searchQuery.toLowerCase());
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        const emptyEl = document.createElement("div");
+        emptyEl.className = "empty-state";
+        if (searchQuery) {
+            emptyEl.textContent = `No tasks matching "${searchQuery}"`;
+        } else if (currentFilter === "active") {
+            emptyEl.textContent = "No active tasks! All caught up.";
+        } else if (currentFilter === "completed") {
+            emptyEl.textContent = "No completed tasks yet. Finish a task to earn XP!";
+        } else {
+            emptyEl.textContent = "No tasks yet. Create one with '+ Add Task' or generate a plan with AI Planner!";
+        }
+        taskList.appendChild(emptyEl);
         return;
     }
 
-    addTaskButton.disabled = true;
-    addTaskButton.textContent = "Adding...";
-    hideMessage();
+    filtered.forEach((task, index) => {
+        const row = createTaskRowElement(task, index);
+        taskList.appendChild(row);
+    });
+}
+
+function createTaskRowElement(task, index) {
+    const meta = getTaskMetadata(task, index);
+    const isCompleted = Boolean(task.completed);
+
+    const row = document.createElement("article");
+    row.className = `task-row ${isCompleted ? "completed" : ""}`;
+    row.dataset.taskId = task.id;
+
+    // 1. Circular Checkbox button
+    const colCheck = document.createElement("div");
+    colCheck.className = "col-check";
+
+    const checkBtn = document.createElement("button");
+    checkBtn.type = "button";
+    checkBtn.className = "custom-checkbox-btn";
+    checkBtn.setAttribute("aria-label", `Mark "${task.title}" as ${isCompleted ? "incomplete" : "complete"}`);
+    checkBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>`;
+    checkBtn.addEventListener("click", () => handleTaskToggle(task, row, checkBtn));
+
+    colCheck.appendChild(checkBtn);
+
+    // 2. Title
+    const colTitle = document.createElement("div");
+    colTitle.className = "col-title";
+    colTitle.textContent = task.title;
+    colTitle.title = task.title;
+
+    // 3. Priority Pill
+    const colPriority = document.createElement("div");
+    colPriority.className = "col-priority";
+    const priorityPill = document.createElement("span");
+    const priorityClass = `priority-${(meta.priority || "medium").toLowerCase()}`;
+    priorityPill.className = `priority-pill ${priorityClass}`;
+    priorityPill.textContent = meta.priority || "Medium";
+    colPriority.appendChild(priorityPill);
+
+    // 4. Due Date
+    const colDue = document.createElement("div");
+    colDue.className = "col-due";
+    colDue.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>${meta.dueDate || "No date"}</span>`;
+
+    // 5. XP Tag
+    const colXp = document.createElement("div");
+    colXp.className = "col-xp";
+    colXp.innerHTML = `<span class="xp-tag-pill">+20 XP</span>`;
+
+    // 6. Action buttons (Edit & Delete)
+    const colActions = document.createElement("div");
+    colActions.className = "col-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "action-icon-btn btn-edit";
+    editBtn.setAttribute("aria-label", `Edit task: ${task.title}`);
+    editBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+    editBtn.addEventListener("click", () => openEditModal(task, meta));
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "action-icon-btn btn-delete";
+    deleteBtn.setAttribute("aria-label", `Delete task: ${task.title}`);
+    deleteBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+    deleteBtn.addEventListener("click", () => handleDeleteTask(task, row));
+
+    colActions.append(editBtn, deleteBtn);
+
+    row.append(colCheck, colTitle, colPriority, colDue, colXp, colActions);
+    return row;
+}
+
+// Checkbox Toggle (PATCH /tasks/{id})
+async function handleTaskToggle(task, rowEl, buttonEl) {
+    if (pendingTaskUpdates.has(task.id)) return;
+
+    const willBeCompleted = !task.completed;
+    pendingTaskUpdates.add(task.id);
+    buttonEl.disabled = true;
 
     try {
-        const data = await apiRequest("/tasks", {
+        const response = await apiRequest(`/tasks/${encodeURIComponent(task.id)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ completed: willBeCompleted })
+        });
+
+        task.completed = response?.task?.completed !== undefined ? Boolean(response.task.completed) : willBeCompleted;
+
+        rowEl.classList.toggle("completed", task.completed);
+        buttonEl.setAttribute("aria-label", `Mark "${task.title}" as ${task.completed ? "incomplete" : "complete"}`);
+
+        if (task.completed) {
+            completedTaskIds.add(task.id);
+            triggerFloatingXpReward(rowEl, "+20 XP");
+        } else {
+            completedTaskIds.delete(task.id);
+        }
+
+        const questData = computeQuestProfile(completedTaskIds.size);
+        updateGamificationDisplay(questData);
+        checkMilestones(questData, task.completed);
+
+        // Update tab count numbers
+        const activeCount = currentTasks.filter(t => !t.completed).length;
+        const completedCount = currentTasks.filter(t => t.completed).length;
+        if (filterCountActive) filterCountActive.textContent = activeCount;
+        if (filterCountCompleted) filterCountCompleted.textContent = completedCount;
+
+        // If currently filtered on active or completed, re-render smoothly
+        if (currentFilter !== "all") {
+            setTimeout(renderTasks, 400);
+        }
+    } catch (error) {
+        console.error("Toggle task completion failed:", error);
+        showGlobalMessage(error.message || "Failed to update task completion on AWS.", "error");
+    } finally {
+        pendingTaskUpdates.delete(task.id);
+        buttonEl.disabled = false;
+    }
+}
+
+// Delete Task (DELETE /tasks/{id})
+async function handleDeleteTask(task, rowEl) {
+    if (!confirm(`Are you sure you want to delete "${task.title}"?`)) return;
+
+    try {
+        rowEl.style.opacity = "0.4";
+        await apiRequest(`/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" });
+
+        // Remove from memory
+        currentTasks = currentTasks.filter(t => t.id !== task.id);
+        completedTaskIds.delete(task.id);
+        delete taskMetadataStore[task.id];
+        saveTaskMeta(taskMetadataStore);
+
+        // Update gamification display
+        const questData = computeQuestProfile(completedTaskIds.size);
+        updateGamificationDisplay(questData);
+
+        showToast("Task Deleted", `"${task.title}" was removed.`, "🗑️");
+        renderTasks();
+    } catch (error) {
+        rowEl.style.opacity = "1";
+        console.error("Delete task failed:", error);
+        showGlobalMessage(error.message || "Could not delete task from AWS.", "error");
+    }
+}
+
+// Filter Tabs Handling
+function setFilter(filterName) {
+    currentFilter = filterName;
+    [filterTabAll, filterTabActive, filterTabCompleted].forEach(tab => {
+        if (tab) tab.classList.toggle("active", tab.dataset.filter === filterName);
+    });
+    renderTasks();
+}
+
+if (filterTabAll) filterTabAll.addEventListener("click", () => setFilter("all"));
+if (filterTabActive) filterTabActive.addEventListener("click", () => setFilter("active"));
+if (filterTabCompleted) filterTabCompleted.addEventListener("click", () => setFilter("completed"));
+
+// Search Input Handling
+if (taskSearchInput) {
+    taskSearchInput.addEventListener("input", (e) => {
+        searchQuery = e.target.value.trim();
+        renderTasks();
+    });
+}
+
+// =============================================================================
+// Modals: Add Task & Edit Task
+// =============================================================================
+
+function openAddModal() {
+    taskForm.reset();
+    // Default due date to today + 3 days in the picker
+    const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString().split("T")[0];
+    taskDueDateInput.value = defaultDate;
+    addTaskModal.hidden = false;
+    taskTitleInput.focus();
+}
+
+function closeAddModal() {
+    addTaskModal.hidden = true;
+}
+
+if (openAddTaskModalBtn) openAddTaskModalBtn.addEventListener("click", openAddModal);
+if (closeAddModalBtn) closeAddModalBtn.addEventListener("click", closeAddModal);
+if (cancelAddTaskBtn) cancelAddTaskBtn.addEventListener("click", closeAddModal);
+
+addTaskModal.addEventListener("click", (e) => {
+    if (e.target === addTaskModal) closeAddModal();
+});
+
+// Create Task Submission (POST /tasks)
+taskForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = taskTitleInput.value.trim();
+    if (!title) return;
+
+    const priority = taskPrioritySelect.value;
+    const rawDue = taskDueDateInput.value;
+    let formattedDue = "No date";
+    if (rawDue) {
+        const parts = rawDue.split("-");
+        if (parts.length === 3) {
+            const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            formattedDue = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        }
+    }
+
+    addTaskSubmitBtn.disabled = true;
+    addTaskSubmitBtn.textContent = "Creating...";
+
+    try {
+        const response = await apiRequest("/tasks", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ title })
         });
 
-        completedActions++;
-        updateActionCounter();
+        const createdTask = response.task || {
+            id: response.id || `task-${Date.now()}`,
+            title,
+            completed: false,
+            createdAt: new Date().toISOString()
+        };
 
-        taskForm.reset();
+        // Save metadata
+        taskMetadataStore[createdTask.id] = {
+            priority,
+            dueDate: formattedDue,
+            rawDueDate: rawDue
+        };
+        saveTaskMeta(taskMetadataStore);
+
+        closeAddModal();
+        showToast("Task Created! ✨", `"${title}" has been added.`, "📝");
 
         await loadTasks();
-
-        showMessage(
-            data.message || "Task created successfully.",
-            "success"
-        );
     } catch (error) {
-        showMessage(error.message, "error");
-        console.error("Failed to create task:", error);
+        console.error("Create task failed:", error);
+        showGlobalMessage(error.message || "Failed to create task on AWS.", "error");
     } finally {
-        addTaskButton.disabled = false;
-        addTaskButton.textContent = "Add task";
+        addTaskSubmitBtn.disabled = false;
+        addTaskSubmitBtn.textContent = "Add Task";
     }
 });
 
-// Delete a task using its ID
-taskList.addEventListener("click", async (event) => {
-    const deleteButton = event.target.closest(".delete-button");
+// Edit Modal
+function openEditModal(task, meta) {
+    editTaskIdInput.value = task.id;
+    editTaskTitleInput.value = task.title;
+    editTaskPrioritySelect.value = meta.priority || "Medium";
+    editTaskDueInput.value = meta.rawDueDate || "";
+    editTaskModal.hidden = false;
+    editTaskTitleInput.focus();
+}
 
-    if (!deleteButton) {
-        return;
-    }
+function closeEditModal() {
+    editTaskModal.hidden = true;
+}
 
-    const taskId = deleteButton.dataset.taskId;
+if (closeEditModalBtn) closeEditModalBtn.addEventListener("click", closeEditModal);
+if (cancelEditTaskBtn) cancelEditTaskBtn.addEventListener("click", closeEditModal);
 
-    if (!taskId) {
-        showMessage("Unable to identify this task.", "error");
-        return;
-    }
-
-    if (!confirm("Are you sure you want to delete this task?")) {
-        return;
-    }
-
-    deleteButton.disabled = true;
-    deleteButton.textContent = "Deleting...";
-    hideMessage();
-
-    try {
-        const data = await apiRequest(
-            `/tasks/${encodeURIComponent(taskId)}`,
-            { method: "DELETE" }
-        );
-
-        completedActions++;
-        updateActionCounter();
-
-        await loadTasks();
-
-        showMessage(
-            data.message || "Task deleted successfully.",
-            "success"
-        );
-    } catch (error) {
-        showMessage(error.message, "error");
-        console.error("Failed to delete task:", error);
-
-        // Restore the list so the user can retry
-        await loadTasks();
-    }
+editTaskModal.addEventListener("click", (e) => {
+    if (e.target === editTaskModal) closeEditModal();
 });
 
-// Refresh the task list manually
-refreshButton.addEventListener("click", loadTasks);
+editTaskForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const taskId = editTaskIdInput.value;
+    const task = currentTasks.find(t => t.id === taskId);
+    if (!task) return;
 
-// Load tasks when the page opens
-loadTasks();
+    const newPriority = editTaskPrioritySelect.value;
+    const rawDue = editTaskDueInput.value;
+    let formattedDue = "No date";
+    if (rawDue) {
+        const parts = rawDue.split("-");
+        if (parts.length === 3) {
+            const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            formattedDue = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        }
+    }
 
-// =============================================================
-// AI Task Planner
-// =============================================================
+    // Update metadata
+    taskMetadataStore[taskId] = {
+        priority: newPriority,
+        dueDate: formattedDue,
+        rawDueDate: rawDue
+    };
+    saveTaskMeta(taskMetadataStore);
 
-const planForm = document.getElementById("plan-form");
-const planGoalInput = document.getElementById("plan-goal");
-const generatePlanButton = document.getElementById("generate-plan-button");
-const planMessageElement = document.getElementById("plan-message");
-const planOutput = document.getElementById("plan-output");
-const planTitleElement = document.getElementById("plan-title");
-const planTaskList = document.getElementById("plan-task-list");
-const addSelectedButton = document.getElementById("add-selected-button");
+    closeEditModal();
+    showToast("Task Updated", `Preferences for "${task.title}" saved.`, "✏️");
+    renderTasks();
+});
 
-// Show or hide the planner status message.
-function showPlanMessage(text, type) {
+// =============================================================================
+// AI Task Planner Implementation (Amazon Bedrock POST /plan -> POST /tasks)
+// =============================================================================
+
+// Character counter
+if (planGoalInput && goalCharCount) {
+    planGoalInput.addEventListener("input", () => {
+        const length = planGoalInput.value.length;
+        goalCharCount.textContent = `${length}/500`;
+    });
+}
+
+// Example chips click
+goalChips.forEach(chip => {
+    chip.addEventListener("click", () => {
+        const text = chip.dataset.example;
+        if (text && planGoalInput) {
+            planGoalInput.value = text;
+            if (goalCharCount) goalCharCount.textContent = `${text.length}/500`;
+            planGoalInput.focus();
+        }
+    });
+});
+
+function showPlanMessage(text, type = "info") {
+    if (!planMessageElement) return;
     planMessageElement.textContent = text;
-    planMessageElement.className = `message ${type}`;
+    planMessageElement.className = `plan-status-message ${type}`;
     planMessageElement.hidden = false;
 }
 
 function hidePlanMessage() {
+    if (!planMessageElement) return;
     planMessageElement.hidden = true;
     planMessageElement.textContent = "";
 }
 
-// Enable the add-selected button only when at least one task is checked.
-function syncAddSelectedButton() {
-    const anyChecked = planTaskList.querySelectorAll(
-        ".plan-task-checkbox:checked"
-    ).length > 0;
-    addSelectedButton.disabled = !anyChecked;
-}
-
-// Validate the structure the backend contract guarantees.
-// Returns true only if the plan is safe to render.
 function isValidPlan(plan) {
     return (
         plan !== null &&
         typeof plan === "object" &&
-        !Array.isArray(plan) &&
-        typeof plan.planTitle === "string" &&
-        plan.planTitle.trim().length > 0 &&
         Array.isArray(plan.tasks) &&
-        plan.tasks.length === 5 &&
-        plan.tasks.every(
-            (task, index) =>
-                task !== null &&
-                typeof task === "object" &&
-                typeof task.title === "string" &&
-                task.title.trim().length > 0 &&
-                typeof task.description === "string" &&
-                task.description.trim().length > 0 &&
-                Number.isInteger(task.day) &&
-                task.day === index + 1  // tasks arrive sorted 1–5 from the backend
-        )
+        plan.tasks.length > 0 &&
+        plan.tasks.every(t => typeof t.title === "string" && t.title.trim().length > 0)
     );
 }
 
-// Render the validated plan into the DOM using textContent only —
-// no untrusted model output is ever passed to innerHTML.
-function renderPlan(plan) {
-    // Set the plan title.
-    planTitleElement.textContent = plan.planTitle;
-
-    // Build one <li> per task.
-    planTaskList.replaceChildren();
-
-    plan.tasks.forEach((task) => {
-        const li = document.createElement("li");
-        li.className = "plan-task-item";
-
-        // Checkbox — identified by day so the save handler can read it.
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "plan-task-checkbox";
-        checkbox.dataset.taskTitle = task.title;
-        checkbox.dataset.taskDay = task.day;
-        checkbox.id = `plan-task-${task.day}`;
-        checkbox.addEventListener("change", syncAddSelectedButton);
-
-        const checkboxLabel = document.createElement("label");
-        checkboxLabel.htmlFor = checkbox.id;
-        checkboxLabel.className = "plan-task-label";
-
-        // Day badge.
-        const badge = document.createElement("span");
-        badge.className = "plan-day-badge";
-        badge.textContent = `Day ${task.day}`;
-
-        // Task title.
-        const title = document.createElement("strong");
-        title.className = "plan-task-title";
-        title.textContent = task.title;
-
-        // Task description.
-        const description = document.createElement("p");
-        description.className = "plan-task-description";
-        description.textContent = task.description;
-
-        checkboxLabel.append(badge, title, description);
-        li.append(checkbox, checkboxLabel);
-        planTaskList.appendChild(li);
-    });
-
-    // Reveal the plan output and reset button state.
-    addSelectedButton.disabled = true;
-    planOutput.hidden = false;
-}
-
-// Generate a plan from the /plan endpoint.
-planForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
+// Generate Plan Handler
+planForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
     const goal = planGoalInput.value.trim();
+    if (!goal) return;
 
-    if (!goal) {
-        showPlanMessage("Please enter a goal.", "error");
-        return;
-    }
-
-    // Lock the form to prevent duplicate submissions.
-    generatePlanButton.disabled = true;
-    generatePlanButton.textContent = "Generating…";
-    planGoalInput.disabled = true;
-    planOutput.hidden = true;
     hidePlanMessage();
+    generatePlanButton.disabled = true;
+    generateButtonText.textContent = "AI Planning with Bedrock...";
+    planGoalInput.disabled = true;
 
     try {
         const data = await apiRequest("/plan", {
@@ -801,99 +902,166 @@ planForm.addEventListener("submit", async (event) => {
         });
 
         if (!data || !isValidPlan(data.plan)) {
-            showPlanMessage(
-                "The server returned an unexpected response. Please try again.",
-                "error"
-            );
-            return;
+            throw new Error("Received an unexpected plan format from AI service. Please retry.");
         }
 
-        renderPlan(data.plan);
-
+        renderGeneratedPlan(data.plan);
+        showPlanMessage(`Generated 5 customized steps for: "${goal}"`, "success");
     } catch (error) {
-        showPlanMessage(error.message, "error");
-        console.error("Failed to generate plan:", error);
+        console.error("AI Plan generation failed:", error);
+        showPlanMessage(error.message || "Failed to generate plan using Amazon Bedrock.", "error");
     } finally {
         generatePlanButton.disabled = false;
-        generatePlanButton.textContent = "Generate Plan";
+        generateButtonText.textContent = "Generate Plan →";
         planGoalInput.disabled = false;
     }
 });
 
-// Save each selected task's title to DynamoDB via POST /tasks.
-// Keeps failed tasks checked so the user can retry them.
-addSelectedButton.addEventListener("click", async () => {
-    const checkedBoxes = [
-        ...planTaskList.querySelectorAll(".plan-task-checkbox:checked")
-    ];
+function renderGeneratedPlan(plan) {
+    planTaskList.replaceChildren();
 
-    if (checkedBoxes.length === 0) {
-        return;
+    const priorityTiers = ["High", "High", "Medium", "Medium", "Low"];
+
+    plan.tasks.forEach((task, index) => {
+        const priority = priorityTiers[index] || "Medium";
+        const priorityClass = `priority-${priority.toLowerCase()}`;
+
+        const li = document.createElement("li");
+        li.className = "plan-task-item";
+
+        // Checkbox
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "plan-task-checkbox";
+        checkbox.id = `plan-task-chk-${index}`;
+        checkbox.checked = true; // Selected by default as shown in reference
+        checkbox.dataset.taskTitle = task.title;
+        checkbox.dataset.priority = priority;
+        checkbox.addEventListener("change", syncAddSelectedButton);
+
+        // Content meta
+        const metaDiv = document.createElement("div");
+        metaDiv.className = "plan-task-meta";
+
+        const titleText = document.createElement("span");
+        titleText.className = "plan-task-title-text";
+        titleText.textContent = task.title;
+
+        const priorityPill = document.createElement("span");
+        priorityPill.className = `priority-pill ${priorityClass}`;
+        priorityPill.textContent = priority;
+
+        metaDiv.append(titleText, priorityPill);
+
+        // Drag icon indicator
+        const dragHandle = document.createElement("span");
+        dragHandle.className = "plan-task-drag-handle";
+        dragHandle.setAttribute("aria-hidden", "true");
+        dragHandle.textContent = "⋮⋮";
+
+        li.append(checkbox, metaDiv, dragHandle);
+        planTaskList.appendChild(li);
+    });
+
+    // Reveal output
+    if (planEmptyState) planEmptyState.hidden = true;
+    if (planOutput) planOutput.hidden = false;
+    if (planSelectAllCheckbox) planSelectAllCheckbox.checked = true;
+
+    syncAddSelectedButton();
+}
+
+function syncAddSelectedButton() {
+    const checked = planTaskList.querySelectorAll(".plan-task-checkbox:checked");
+    const total = planTaskList.querySelectorAll(".plan-task-checkbox");
+    addSelectedButton.disabled = checked.length === 0;
+
+    if (planSelectAllCheckbox) {
+        planSelectAllCheckbox.checked = total.length > 0 && checked.length === total.length;
     }
+}
 
-    // Lock both buttons for the duration of the save operation.
+if (planSelectAllCheckbox) {
+    planSelectAllCheckbox.addEventListener("change", (e) => {
+        const checkboxes = planTaskList.querySelectorAll(".plan-task-checkbox");
+        checkboxes.forEach(cb => { cb.checked = e.target.checked; });
+        syncAddSelectedButton();
+    });
+}
+
+// Add Selected Tasks to Dashboard
+addSelectedButton.addEventListener("click", async () => {
+    const checkedBoxes = [...planTaskList.querySelectorAll(".plan-task-checkbox:checked")];
+    if (checkedBoxes.length === 0) return;
+
     addSelectedButton.disabled = true;
-    addSelectedButton.textContent = "Saving…";
+    addSelectedButton.textContent = "Adding Tasks to Dashboard...";
     generatePlanButton.disabled = true;
     hidePlanMessage();
 
     const saved = [];
     const failed = [];
 
-    // Save tasks sequentially to avoid racing DynamoDB writes.
     for (const checkbox of checkedBoxes) {
         const title = checkbox.dataset.taskTitle;
+        const priority = checkbox.dataset.priority || "Medium";
 
         try {
-            await apiRequest("/tasks", {
+            const response = await apiRequest("/tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title })
             });
 
+            const taskId = response?.task?.id || response?.id;
+            if (taskId) {
+                // Save priority metadata
+                const dueDateObj = new Date(Date.now() + 86400000 * 3);
+                taskMetadataStore[taskId] = {
+                    priority,
+                    dueDate: dueDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                    rawDueDate: dueDateObj.toISOString().split("T")[0]
+                };
+                saveTaskMeta(taskMetadataStore);
+            }
+
             saved.push(title);
-
-            // Uncheck successfully saved tasks so they cannot be double-saved.
-            checkbox.checked = false;
-
-        } catch {
-            // Leave the checkbox checked so the user can retry.
+            checkbox.checked = false; // Uncheck on success to prevent duplication
+        } catch (error) {
+            console.error(`Failed to save task "${title}":`, error);
             failed.push(title);
         }
     }
 
-    // Update the action counter for each successfully saved task.
-    completedActions += saved.length;
-    updateActionCounter();
-
-    // Reload the task list to show the newly added tasks.
+    // Refresh Dashboard tasks in the background
     if (saved.length > 0) {
         await loadTasks();
     }
 
-    // Report the outcome clearly and accurately.
     if (failed.length === 0) {
-        const noun = saved.length === 1 ? "task" : "tasks";
-        showPlanMessage(
-            `${saved.length} ${noun} added to your task list.`,
-            "success"
-        );
-    } else if (saved.length === 0) {
-        showPlanMessage(
-            `All ${failed.length} tasks failed to save. The checked tasks are still selected — please try again.`,
-            "error"
-        );
+        showPlanMessage(`Successfully added all ${saved.length} tasks to your Dashboard! 🎉`, "success");
+        showToast("Tasks Added! 🚀", `${saved.length} tasks added to your Dashboard.`, "✅");
     } else {
-        showPlanMessage(
-            `${saved.length} task${saved.length === 1 ? "" : "s"} saved. ` +
-            `${failed.length} task${failed.length === 1 ? "" : "s"} failed — ` +
-            `the failed tasks are still selected so you can retry them.`,
-            "error"
-        );
+        showPlanMessage(`${saved.length} tasks added. ${failed.length} failed — failed tasks remain selected to retry.`, "error");
     }
 
-    // Re-sync the button state after unchecking saved tasks.
-    syncAddSelectedButton();
+    addSelectedButton.disabled = false;
+    addSelectedButton.innerHTML = `<span class="plus-sign" aria-hidden="true">+</span> Add Selected Tasks to Dashboard`;
     generatePlanButton.disabled = false;
-    addSelectedButton.textContent = "Add selected tasks";
+    syncAddSelectedButton();
+});
+
+// =============================================================================
+// Initialization
+// =============================================================================
+document.addEventListener("DOMContentLoaded", () => {
+    // Initial routing check
+    if (window.location.hash.toLowerCase() === "#planner") {
+        switchView("planner");
+    } else {
+        switchView("dashboard");
+    }
+
+    // Load tasks from AWS
+    loadTasks();
 });

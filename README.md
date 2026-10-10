@@ -315,7 +315,7 @@ you learned. Include:
 -   Screenshots or a short demo.
 -   Links to the public repository and live demo.
 -   The required challenge tag, `#agents`, if required by the current
-    AWS October Challenge rules.
+    AWS October Weekend Challenge rules.
 
 Article URL: *Add the published AWS Builder Center article link here.*
 

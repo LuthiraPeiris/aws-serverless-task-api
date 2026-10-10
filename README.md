@@ -5,7 +5,7 @@ with AWS serverless services. Users can manage tasks, ask Amazon Bedrock
 to break a goal into five actionable tasks, and stay motivated through
 XP, levels, and achievement badges.
 
-> **Project purpose:** TaskFlow Quest was built for the **AWS October Challenge**. It demonstrates an AI-powered, serverless task-planning application using Amazon Bedrock and other AWS services.
+> **Project purpose:** TaskFlow Quest was built for the **Weekend Challenge: Build an agent people actually enjoy using**. It demonstrates an AI-powered, serverless task-planning application using Amazon Bedrock and other AWS services.
 
 ## Architecture
 ![Image Alt](https://github.com/LuthiraPeiris/aws-serverless-task-api/blob/a275e5b0b47ca748479ea6ad833e5fa60aad8207/architecture/architecture.png)
@@ -95,36 +95,17 @@ purpose.
 
 ## AWS Services
 
-  -----------------------------------------------------------------------
-  Service                             Responsibility
-  ----------------------------------- -----------------------------------
-  Amazon API Gateway HTTP API         Exposes the application's HTTP
-                                      endpoints
-
-  AWS Lambda                          Handles task operations and AI
-                                      planning requests
-
-  Amazon DynamoDB                     Stores task records in the
-                                      `serverless-tasks` table
-
-  Amazon Bedrock                      Generates five-task plans from a
-                                      user goal
-
-  AWS IAM                             Grants the Lambda execution role
-                                      the permissions required by the
-                                      application
-
-  Amazon CloudWatch Logs              Captures Lambda execution logs and
-                                      errors
-
-  Terraform                           Defines and manages AWS
-                                      infrastructure
-
-  GitHub Pages                        Hosts the static frontend
-
-  GitHub                              Stores source code and version
-                                      history
-  -----------------------------------------------------------------------
+| Service | Responsibility |
+| :--- | :--- |
+| Amazon API Gateway HTTP API | Exposes the application's HTTP endpoints |
+| AWS Lambda | Handles task operations and AI planning requests |
+| Amazon DynamoDB | Stores task records in the `serverless-tasks` table |
+| Amazon Bedrock | Generates five-task plans from a user goal |
+| AWS IAM | Grants the Lambda execution role the permissions required by the application |
+| Amazon CloudWatch Logs | Captures Lambda execution logs and errors |
+| Terraform | Defines and manages AWS infrastructure |
+| GitHub Pages | Hosts the static frontend |
+| GitHub | Stores source code and version history |
 
 **Region:** `ap-south-1` (Mumbai) for the AWS resources configured in
 this project. GitHub Pages is an external hosting service, not an AWS
@@ -195,13 +176,13 @@ totalXP = completedTaskCount * 20
 
 For example:
 
-    Completed tasks    XP
-  ----------------- -----
-                  0     0
-                  1    20
-                  3    60
-                  5   100
-                 10   200
+| Completed tasks | XP |
+| :--- | :--- |
+| 0 | 0 |
+| 1 | 20 |
+| 3 | 60 |
+| 5 | 100 |
+| 10 | 200 |
 
 When a task is unchecked, it no longer contributes to XP. The frontend
 recalculates the level and badge eligibility from the current
@@ -357,8 +338,7 @@ functionality.
 **Luthira Peiris**
 
 -   GitHub: https://github.com/LuthiraPeiris
--   Project: https://github.com/LuthiraPeiris/aws-serverless-task-api
--   Live demo: https://luthirapeiris.github.io/aws-serverless-task-api/
+-   Portfolio Website: https://www.luthirame.com/
 
 ## License
 

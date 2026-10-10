@@ -51,6 +51,73 @@
                 </article>
             </section>
 
+            <!-- AI Task Planner -->
+            <section class="plan-section">
+                <div class="section-heading">
+                    <div>
+                        <h2>AI Task Planner</h2>
+                        <p>Powered by Amazon Bedrock</p>
+                    </div>
+                </div>
+
+                <form id="plan-form" class="task-form">
+                    <label for="plan-goal">Your goal</label>
+
+                    <div class="input-row">
+                        <input
+                            type="text"
+                            id="plan-goal"
+                            name="goal"
+                            placeholder="e.g. Learn AWS Lambda in five days"
+                            maxlength="500"
+                            required
+                        >
+
+                        <button type="submit" id="generate-plan-button">
+                            Generate Plan
+                        </button>
+                    </div>
+
+                    <p class="form-hint">
+                        Describe what you want to achieve. The AI will create a five-day plan.
+                    </p>
+                </form>
+
+                <div
+                    id="plan-message"
+                    class="message"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                ></div>
+
+                <div id="plan-output" hidden>
+                    <div class="plan-result-heading">
+                        <h3 id="plan-title"></h3>
+                        <p class="form-hint">
+                            Select tasks to add to your task list.
+                            Only the title will be saved to DynamoDB — descriptions and day numbers are shown for reference only.
+                        </p>
+                    </div>
+
+                    <ul
+                        id="plan-task-list"
+                        class="plan-task-list"
+                        aria-label="Generated plan tasks"
+                    ></ul>
+
+                    <div class="plan-actions">
+                        <button
+                            type="button"
+                            id="add-selected-button"
+                            disabled
+                        >
+                            Add selected tasks
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <section class="task-section">
                 <div class="section-heading">
                     <div>
@@ -113,7 +180,7 @@
 
         <footer class="app-footer">
             <p>TaskFlow · Built with AWS Serverless Services</p>
-            <p>API Gateway · Lambda · DynamoDB</p>
+            <p>API Gateway · Lambda · DynamoDB · Bedrock</p>
         </footer>
     </div>
 </body>

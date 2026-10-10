@@ -110,8 +110,10 @@ resource "aws_apigatewayv2_api" "task_api" {
   cors_configuration {
     allow_origins = [
       "http://localhost:3000",
-      "http://127.0.0.1:3000"
+      "http://127.0.0.1:3000",
+      "https://luthirapeiris.github.io"
     ]
+
 
     allow_methods = ["GET", "POST", "DELETE", "OPTIONS"]
     allow_headers = ["content-type"]

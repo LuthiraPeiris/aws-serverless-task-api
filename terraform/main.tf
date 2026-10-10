@@ -116,7 +116,8 @@ resource "aws_apigatewayv2_api" "task_api" {
     ]
 
 
-    allow_methods = ["GET", "POST", "DELETE", "OPTIONS"]
+    
+    allow_methods = ["GET", "POST", "DELETE", "PATCH", "OPTIONS"]
     allow_headers = ["content-type"]
   }
 }

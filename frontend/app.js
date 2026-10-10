@@ -14,7 +14,382 @@ const messageElement = document.getElementById("message");
 const connectionStatus = document.getElementById("connection-status");
 const connectionText = document.getElementById("connection-text");
 
+// Quest gamification HTML elements
+const questLevelCard = document.getElementById("quest-level-card");
+const questLevelEmblem = document.getElementById("quest-level-emblem");
+const questLevelTier = document.getElementById("quest-level-tier");
+const questLevelTitle = document.getElementById("quest-level-title");
+const questTotalXp = document.getElementById("quest-total-xp");
+const questCompletedCount = document.getElementById("quest-completed-count");
+const questProgressText = document.getElementById("quest-progress-text");
+const questProgressbar = document.getElementById("quest-progressbar");
+const questProgressFill = document.getElementById("quest-progress-fill");
+const questBadgesGrid = document.getElementById("quest-badges-grid");
+const questBadgesUnlockedCount = document.getElementById("quest-badges-unlocked-count");
+const questToastContainer = document.getElementById("quest-toast-container");
+
+// Gamification state (in-memory prototype session progress)
+const XP_PER_TASK = 20;
+const rewardedTaskIds = new Set();
+const pendingTaskUpdates = new Set();
+const unlockedBadgeIds = new Set();
+let currentLevelName = "Beginner";
 let completedActions = 0;
+
+// SVG Emblems for Levels
+const LEVEL_EMBLEMS = {
+    beginner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>`,
+    taskExplorer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>`,
+    productivityChampion: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M6 4h12v7a6 6 0 0 1-12 0V4z"></path></svg>`
+};
+
+// SVG Icons for Badges
+const BADGE_ICONS = {
+    firstStep: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline><path d="m9 12 2 2 4-4"></path></svg>`,
+    highFive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`
+};
+
+// Safely render SVG content into an element using DOMParser
+function setSvgContent(element, svgString) {
+    if (!element || !svgString) return;
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString, "image/svg+xml");
+        const svgEl = doc.querySelector("svg");
+        if (svgEl) {
+            element.replaceChildren(svgEl);
+        }
+    } catch {
+        element.textContent = "★";
+    }
+}
+
+// Show friendly toast notifications
+function showToast(title, description, icon = "⭐", variant = "") {
+    if (!questToastContainer) return;
+
+    const toast = document.createElement("div");
+    toast.className = `quest-toast ${variant}`.trim();
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "quest-toast-icon";
+    iconSpan.textContent = icon;
+
+    const bodyDiv = document.createElement("div");
+    bodyDiv.className = "quest-toast-body";
+
+    const titleEl = document.createElement("h5");
+    titleEl.className = "quest-toast-title";
+    titleEl.textContent = title;
+
+    const descEl = document.createElement("p");
+    descEl.className = "quest-toast-desc";
+    descEl.textContent = description;
+
+    bodyDiv.append(titleEl, descEl);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "quest-toast-close";
+    closeBtn.setAttribute("aria-label", "Close notification");
+    closeBtn.textContent = "×";
+    closeBtn.addEventListener("click", () => {
+        toast.classList.add("toast-fade-out");
+        setTimeout(() => toast.remove(), 300);
+    });
+
+    toast.append(iconSpan, bodyDiv, closeBtn);
+    questToastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.isConnected) {
+            toast.classList.add("toast-fade-out");
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 4500);
+}
+
+// Show floating +20 XP reward animation anchored on the completed card
+function triggerFloatingXpReward(targetElement, text = "+20 XP") {
+    if (!targetElement) return;
+
+    const pill = document.createElement("div");
+    pill.className = "floating-xp-pill";
+    pill.textContent = text;
+    targetElement.appendChild(pill);
+
+    setTimeout(() => {
+        if (pill.isConnected) {
+            pill.remove();
+        }
+    }, 1300);
+}
+
+// Compute level, progress, and badges from accumulated XP and completed tasks
+function computeQuestProfile(totalXp, completedCount) {
+    let level = "Beginner";
+    let tier = "LEVEL 1";
+    let cardClass = "level-beginner";
+    let emblemKey = "beginner";
+    let progressPercent = 0;
+    let progressText = "";
+
+    if (totalXp >= 200) {
+        level = "Productivity Champion";
+        tier = "LEVEL 3";
+        cardClass = "level-productivity-champion";
+        emblemKey = "productivityChampion";
+        progressPercent = 100;
+        progressText = "Max level achieved! Productivity Champion";
+    } else if (totalXp >= 100) {
+        level = "Task Explorer";
+        tier = "LEVEL 2";
+        cardClass = "level-task-explorer";
+        emblemKey = "taskExplorer";
+        const rem = 200 - totalXp;
+        progressPercent = Math.min(100, Math.round(((totalXp - 100) / 100) * 100));
+        progressText = `${rem} XP to Productivity Champion`;
+    } else {
+        level = "Beginner";
+        tier = "LEVEL 1";
+        cardClass = "level-beginner";
+        emblemKey = "beginner";
+        const rem = 100 - totalXp;
+        progressPercent = Math.min(100, Math.round((totalXp / 100) * 100));
+        progressText = `${rem} XP to Task Explorer`;
+    }
+
+    const firstStepUnlocked = completedCount >= 1 || rewardedTaskIds.size >= 1;
+    const highFiveCount = Math.max(completedCount, rewardedTaskIds.size);
+    const highFiveUnlocked = highFiveCount >= 5;
+
+    const badges = [
+        {
+            id: "first_step",
+            name: "First Step",
+            description: "Completed your first task",
+            unlocked: firstStepUnlocked,
+            progressLabel: firstStepUnlocked ? "Unlocked" : "0 / 1"
+        },
+        {
+            id: "high_five",
+            name: "High Five",
+            description: "Completed five unique tasks",
+            unlocked: highFiveUnlocked,
+            progressLabel: highFiveUnlocked ? "Unlocked" : `${Math.min(5, highFiveCount)} / 5`
+        }
+    ];
+
+    return {
+        totalXp,
+        completedCount,
+        level,
+        tier,
+        cardClass,
+        emblemKey,
+        progressPercent,
+        progressText,
+        badges
+    };
+}
+
+// Render the Quest Dashboard
+function renderQuestDashboard(questData) {
+    if (!questLevelCard) return;
+
+    questLevelCard.className = `quest-level-card ${questData.cardClass}`;
+    if (questLevelTier) questLevelTier.textContent = questData.tier;
+    if (questLevelTitle) questLevelTitle.textContent = questData.level;
+
+    if (questLevelEmblem) {
+        setSvgContent(questLevelEmblem, LEVEL_EMBLEMS[questData.emblemKey]);
+    }
+
+    if (questTotalXp) questTotalXp.textContent = questData.totalXp;
+    if (questCompletedCount) questCompletedCount.textContent = questData.completedCount;
+
+    if (questProgressText) questProgressText.textContent = questData.progressText;
+    if (questProgressbar) {
+        questProgressbar.setAttribute("aria-valuenow", questData.progressPercent);
+    }
+    if (questProgressFill) {
+        questProgressFill.style.width = `${questData.progressPercent}%`;
+    }
+
+    if (questBadgesGrid) {
+        questBadgesGrid.replaceChildren();
+        const unlockedCount = questData.badges.filter((b) => b.unlocked).length;
+        if (questBadgesUnlockedCount) {
+            questBadgesUnlockedCount.textContent = `${unlockedCount} / ${questData.badges.length} Unlocked`;
+        }
+
+        questData.badges.forEach((badge) => {
+            const card = document.createElement("article");
+            card.className = `quest-badge-card ${badge.unlocked ? "unlocked" : "locked"}`;
+            card.setAttribute("role", "listitem");
+
+            const iconBox = document.createElement("div");
+            iconBox.className = "quest-badge-icon-box";
+            iconBox.setAttribute("aria-hidden", "true");
+            setSvgContent(
+                iconBox,
+                badge.id === "first_step" ? BADGE_ICONS.firstStep : BADGE_ICONS.highFive
+            );
+
+            const details = document.createElement("div");
+            details.className = "quest-badge-details";
+
+            const titleRow = document.createElement("div");
+            titleRow.className = "quest-badge-title-row";
+
+            const name = document.createElement("h5");
+            name.className = "quest-badge-name";
+            name.textContent = badge.name;
+
+            const pill = document.createElement("span");
+            pill.className = "quest-badge-status-pill";
+            pill.textContent = badge.progressLabel;
+
+            titleRow.append(name, pill);
+
+            const desc = document.createElement("p");
+            desc.className = "quest-badge-desc";
+            desc.textContent = badge.description;
+
+            details.append(titleRow, desc);
+            card.append(iconBox, details);
+            questBadgesGrid.appendChild(card);
+        });
+    }
+}
+
+// Check for Level-Up and Badge Unlock milestones
+function checkGamificationMilestones(newQuestData, triggerCelebration = false) {
+    if (!triggerCelebration) {
+        currentLevelName = newQuestData.level;
+        newQuestData.badges.forEach((b) => {
+            if (b.unlocked) unlockedBadgeIds.add(b.id);
+        });
+        return;
+    }
+
+    if (currentLevelName && newQuestData.level !== currentLevelName) {
+        showToast(
+            `Level Up! 🎉`,
+            `You reached ${newQuestData.level}! Keep crushing your goals.`,
+            "🏆",
+            "toast-level-up"
+        );
+        currentLevelName = newQuestData.level;
+    }
+
+    newQuestData.badges.forEach((badge) => {
+        if (badge.unlocked && !unlockedBadgeIds.has(badge.id)) {
+            unlockedBadgeIds.add(badge.id);
+            showToast(
+                `Badge Unlocked! 🌟`,
+                `${badge.name}: ${badge.description}`,
+                "🎖️",
+                "toast-badge"
+            );
+        }
+    });
+}
+
+// Update or toggle XP status badge on a task card
+function updateTaskXpPill(taskItem, isCompleted) {
+    const dateEl = taskItem.querySelector(".task-date");
+    if (!dateEl) return;
+    const existingPill = dateEl.querySelector(".task-xp-pill");
+
+    if (isCompleted && !existingPill) {
+        const xpPill = document.createElement("span");
+        xpPill.className = "task-xp-pill";
+        xpPill.textContent = "Completed (+20 XP)";
+        dateEl.appendChild(xpPill);
+    } else if (!isCompleted && existingPill) {
+        existingPill.remove();
+    }
+}
+
+// Handle task completion toggle with PATCH /tasks/{id}
+async function handleTaskToggle(task, checkbox, taskItem) {
+    const isNowCompleted = checkbox.checked;
+
+    if (pendingTaskUpdates.has(task.id)) {
+        checkbox.checked = !isNowCompleted;
+        return;
+    }
+
+    pendingTaskUpdates.add(task.id);
+    checkbox.disabled = true;
+
+    try {
+        const responseData = await apiRequest(`/tasks/${encodeURIComponent(task.id)}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ completed: isNowCompleted })
+        });
+
+        task.completed = isNowCompleted;
+        if (responseData?.task?.completed !== undefined) {
+            task.completed = Boolean(responseData.task.completed);
+        }
+
+        taskItem.classList.toggle("completed", task.completed);
+        checkbox.setAttribute(
+            "aria-label",
+            `Mark task "${task.title}" as ${task.completed ? "incomplete" : "complete"}`
+        );
+
+        updateTaskXpPill(taskItem, task.completed);
+
+        if (task.completed) {
+            if (!rewardedTaskIds.has(task.id)) {
+                // First-time completion in this session: award 20 XP
+                rewardedTaskIds.add(task.id);
+                triggerFloatingXpReward(taskItem, "+20 XP");
+
+                const updatedQuest = computeQuestProfile(
+                    rewardedTaskIds.size * XP_PER_TASK,
+                    rewardedTaskIds.size
+                );
+                renderQuestDashboard(updatedQuest);
+                checkGamificationMilestones(updatedQuest, true);
+            } else {
+                // Recompletion after an earlier reward: 0 XP
+                showToast("Task completed", "XP already earned for this task.", "ℹ️", "");
+                const updatedQuest = computeQuestProfile(
+                    rewardedTaskIds.size * XP_PER_TASK,
+                    rewardedTaskIds.size
+                );
+                renderQuestDashboard(updatedQuest);
+            }
+        } else {
+            // Uncompletion: mark incomplete, retain rewarded status, never subtract XP
+            showToast("Task marked incomplete", "Retaining your earned XP progress.", "↩️", "");
+            const updatedQuest = computeQuestProfile(
+                rewardedTaskIds.size * XP_PER_TASK,
+                rewardedTaskIds.size
+            );
+            renderQuestDashboard(updatedQuest);
+        }
+
+        completedActions++;
+        updateActionCounter();
+
+    } catch (error) {
+        console.error("Failed to update task completion:", error);
+        checkbox.checked = !isNowCompleted;
+        taskItem.classList.toggle("completed", !isNowCompleted);
+        showMessage(error.message || "Failed to update task completion status.", "error");
+    } finally {
+        pendingTaskUpdates.delete(task.id);
+        checkbox.disabled = false;
+    }
+}
 
 // Show success or error messages
 function showMessage(message, type) {
@@ -78,6 +453,21 @@ async function loadTasks() {
         taskCountElement.textContent =
             `${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}`;
 
+        // Sync rewardedTaskIds with loaded completed tasks
+        tasks.forEach((t) => {
+            if (t.completed) {
+                rewardedTaskIds.add(t.id);
+            }
+        });
+
+        // Compute gamification state
+        const questData = (data.quest && typeof data.quest.totalXp === "number")
+            ? data.quest
+            : computeQuestProfile(rewardedTaskIds.size * XP_PER_TASK, rewardedTaskIds.size);
+
+        checkGamificationMilestones(questData, false);
+        renderQuestDashboard(questData);
+
         taskList.replaceChildren();
 
         if (tasks.length === 0) {
@@ -96,7 +486,26 @@ async function loadTasks() {
 
         tasks.forEach((task) => {
             const taskItem = document.createElement("article");
-            taskItem.className = "task-item";
+            taskItem.className = `task-item${task.completed ? " completed" : ""}`;
+
+            // Accessible completion checkbox
+            const checkboxWrapper = document.createElement("div");
+            checkboxWrapper.className = "task-checkbox-wrapper";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.className = "task-checkbox";
+            checkbox.id = `task-chk-${task.id}`;
+            checkbox.checked = Boolean(task.completed);
+            checkbox.setAttribute(
+                "aria-label",
+                `Mark task "${task.title}" as ${task.completed ? "incomplete" : "complete"}`
+            );
+            checkbox.addEventListener("change", () =>
+                handleTaskToggle(task, checkbox, taskItem)
+            );
+
+            checkboxWrapper.appendChild(checkbox);
 
             const taskDetails = document.createElement("div");
             taskDetails.className = "task-details";
@@ -113,6 +522,13 @@ async function loadTasks() {
                 ? "Date unavailable"
                 : `Created ${parsedDate.toLocaleString()}`;
 
+            if (task.completed) {
+                const xpPill = document.createElement("span");
+                xpPill.className = "task-xp-pill";
+                xpPill.textContent = "Completed (+20 XP)";
+                date.appendChild(xpPill);
+            }
+
             const deleteButton = document.createElement("button");
             deleteButton.type = "button";
             deleteButton.className = "delete-button";
@@ -124,7 +540,7 @@ async function loadTasks() {
             deleteButton.dataset.taskId = task.id;
 
             taskDetails.append(title, date);
-            taskItem.append(taskDetails, deleteButton);
+            taskItem.append(checkboxWrapper, taskDetails, deleteButton);
             taskList.appendChild(taskItem);
         });
     } catch (error) {

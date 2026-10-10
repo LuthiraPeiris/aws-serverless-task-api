@@ -51,6 +51,61 @@
                 </article>
             </section>
 
+            <!-- TaskFlow Quest Gamification Dashboard -->
+            <section class="quest-section" aria-label="TaskFlow Quest Progress">
+                <div class="quest-header">
+                    <div class="quest-title-group">
+                        <div class="quest-badge-tag">TASKFLOW QUEST</div>
+                        <h2>Productivity Quest</h2>
+                        <p class="quest-subtitle">
+                            Level up by completing tasks. Prototype session progress.
+                        </p>
+                    </div>
+                    <div class="quest-level-card" id="quest-level-card">
+                        <div class="quest-level-emblem" id="quest-level-emblem" aria-hidden="true"></div>
+                        <div class="quest-level-info">
+                            <span class="quest-level-tier" id="quest-level-tier">LEVEL 1</span>
+                            <h3 class="quest-level-title" id="quest-level-title">Beginner</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quest-metrics-grid">
+                    <div class="quest-metric-card">
+                        <span class="quest-metric-label">Total Experience</span>
+                        <div class="quest-metric-value-row">
+                            <span class="quest-metric-number" id="quest-total-xp">0</span>
+                            <span class="quest-metric-unit">XP</span>
+                        </div>
+                    </div>
+                    <div class="quest-metric-card">
+                        <span class="quest-metric-label">Completed Tasks</span>
+                        <div class="quest-metric-value-row">
+                            <span class="quest-metric-number" id="quest-completed-count">0</span>
+                            <span class="quest-metric-unit">done</span>
+                        </div>
+                    </div>
+                    <div class="quest-metric-card quest-progress-card">
+                        <div class="quest-progress-header">
+                            <span class="quest-metric-label">Next Level Target</span>
+                            <span class="quest-progress-target" id="quest-progress-text">100 XP to Task Explorer</span>
+                        </div>
+                        <div class="quest-progress-bar-container" role="progressbar" id="quest-progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Experience toward next level">
+                            <div class="quest-progress-bar-fill" id="quest-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Achievement Badges -->
+                <div class="quest-badges-container">
+                    <div class="quest-badges-header">
+                        <h4>Achievement Badges</h4>
+                        <span class="quest-badges-counter" id="quest-badges-unlocked-count">0 / 2 Unlocked</span>
+                    </div>
+                    <div class="quest-badges-grid" id="quest-badges-grid" role="list"></div>
+                </div>
+            </section>
+
             <!-- AI Task Planner -->
             <section class="plan-section">
                 <div class="section-heading">
@@ -183,5 +238,8 @@
             <p>API Gateway · Lambda · DynamoDB · Bedrock</p>
         </footer>
     </div>
+
+    <!-- Toast container for notifications -->
+    <div id="quest-toast-container" class="quest-toast-container" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

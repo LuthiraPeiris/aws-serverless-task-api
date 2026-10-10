@@ -9,7 +9,8 @@ import {
   PutCommand,
   ScanCommand,
   GetCommand,
-  DeleteCommand
+  DeleteCommand,
+  UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
 
@@ -247,7 +248,7 @@ if (method === "POST") {
 
     // Validate task IDs before retrieving or deleting tasks.
     if (
-      (method === "GET" || method === "DELETE") &&
+      (method === "GET" || method === "DELETE" || method === "PATCH") &&
       taskId &&
       !UUID_PATTERN.test(taskId)
     ) {
@@ -286,6 +287,49 @@ if (method === "POST") {
 
       return response(200, {
         tasks: result.Items ?? []
+      });
+    }
+  
+    // Update a task's completion status.
+    if (method === "PATCH" && taskId) {
+      let body;
+
+      try {
+        body =
+          typeof event.body === "string"
+            ? JSON.parse(event.body)
+            : event.body;
+      } catch {
+        return response(400, {
+          message: "Request body must contain valid JSON."
+        });
+      }
+
+      if (
+        !body ||
+        typeof body.completed !== "boolean"
+      ) {
+        return response(400, {
+          message: "The completed field must be a boolean."
+        });
+      }
+
+      const result = await dynamodb.send(
+        new UpdateCommand({
+          TableName: tableName,
+          Key: { id: taskId },
+          UpdateExpression: "SET completed = :completed",
+          ExpressionAttributeValues: {
+            ":completed": body.completed
+          },
+          ConditionExpression: "attribute_exists(id)",
+          ReturnValues: "ALL_NEW"
+        })
+      );
+
+      return response(200, {
+        message: "Task completion updated successfully.",
+        task: result.Attributes
       });
     }
 

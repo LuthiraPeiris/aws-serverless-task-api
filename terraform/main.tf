@@ -63,7 +63,8 @@ resource "aws_iam_role_policy" "dynamodb_access" {
           "dynamodb:PutItem",
           "dynamodb:GetItem",
           "dynamodb:Scan",
-          "dynamodb:DeleteItem"
+          "dynamodb:DeleteItem",
+          "dynamodb:UpdateItem"
         ]
 
         Resource = aws_dynamodb_table.tasks.arn
@@ -157,6 +158,12 @@ resource "aws_apigatewayv2_route" "get_task" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
+# PATCH /tasks/{id}
+resource "aws_apigatewayv2_route" "update_task" {
+  api_id    = aws_apigatewayv2_api.task_api.id
+  route_key = "PATCH /tasks/{id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
 # DELETE /tasks/{id}
 resource "aws_apigatewayv2_route" "delete_task" {
   api_id    = aws_apigatewayv2_api.task_api.id

@@ -93,11 +93,12 @@ resource "aws_lambda_function" "task_api" {
   timeout     = 10
   memory_size = 128
 
-  environment {
-    variables = {
-      TASKS_TABLE = aws_dynamodb_table.tasks.name
-    }
+environment {
+  variables = {
+    TASKS_TABLE     = aws_dynamodb_table.tasks.name
+    BEDROCK_MODEL_ID = "google.gemma-3-4b-it"
   }
+}
 }
 
 
@@ -130,6 +131,13 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
 resource "aws_apigatewayv2_route" "create_task" {
   api_id    = aws_apigatewayv2_api.task_api.id
   route_key = "POST /tasks"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
+# POST /plan - Generate an AI task plan
+resource "aws_apigatewayv2_route" "generate_plan" {
+  api_id    = aws_apigatewayv2_api.task_api.id
+  route_key = "POST /plan"
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
@@ -168,7 +176,7 @@ resource "aws_lambda_permission" "api_gateway_invoke" {
   function_name = aws_lambda_function.task_api.function_name
   principal     = "apigateway.amazonaws.com"
 
-  source_arn = "${aws_apigatewayv2_api.task_api.execution_arn}/*/*/tasks*"
+  source_arn = "${aws_apigatewayv2_api.task_api.execution_arn}/*/*/*"
 }
 
 # Display the API endpoint after deployment

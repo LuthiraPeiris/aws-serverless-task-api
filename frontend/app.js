@@ -30,7 +30,7 @@ const questToastContainer = document.getElementById("quest-toast-container");
 
 // Gamification state (in-memory prototype session progress)
 const XP_PER_TASK = 20;
-const rewardedTaskIds = new Set();
+const completedTaskIds = new Set();
 const pendingTaskUpdates = new Set();
 const unlockedBadgeIds = new Set();
 let currentLevelName = "Beginner";
@@ -127,6 +127,9 @@ function triggerFloatingXpReward(targetElement, text = "+20 XP") {
 
 // Compute level, progress, and badges from accumulated XP and completed tasks
 function computeQuestProfile(totalXp, completedCount) {
+    const validXp = Math.max(0, totalXp);
+    const validCount = Math.max(0, completedCount);
+
     let level = "Beginner";
     let tier = "LEVEL 1";
     let cardClass = "level-beginner";
@@ -134,34 +137,33 @@ function computeQuestProfile(totalXp, completedCount) {
     let progressPercent = 0;
     let progressText = "";
 
-    if (totalXp >= 200) {
+    if (validXp >= 200) {
         level = "Productivity Champion";
         tier = "LEVEL 3";
         cardClass = "level-productivity-champion";
         emblemKey = "productivityChampion";
         progressPercent = 100;
         progressText = "Max level achieved! Productivity Champion";
-    } else if (totalXp >= 100) {
+    } else if (validXp >= 100) {
         level = "Task Explorer";
         tier = "LEVEL 2";
         cardClass = "level-task-explorer";
         emblemKey = "taskExplorer";
-        const rem = 200 - totalXp;
-        progressPercent = Math.min(100, Math.round(((totalXp - 100) / 100) * 100));
+        const rem = 200 - validXp;
+        progressPercent = Math.min(100, Math.round(((validXp - 100) / 100) * 100));
         progressText = `${rem} XP to Productivity Champion`;
     } else {
         level = "Beginner";
         tier = "LEVEL 1";
         cardClass = "level-beginner";
         emblemKey = "beginner";
-        const rem = 100 - totalXp;
-        progressPercent = Math.min(100, Math.round((totalXp / 100) * 100));
+        const rem = 100 - validXp;
+        progressPercent = Math.min(100, Math.round((validXp / 100) * 100));
         progressText = `${rem} XP to Task Explorer`;
     }
 
-    const firstStepUnlocked = completedCount >= 1 || rewardedTaskIds.size >= 1;
-    const highFiveCount = Math.max(completedCount, rewardedTaskIds.size);
-    const highFiveUnlocked = highFiveCount >= 5;
+    const firstStepUnlocked = validCount >= 1;
+    const highFiveUnlocked = validCount >= 5;
 
     const badges = [
         {
@@ -176,13 +178,13 @@ function computeQuestProfile(totalXp, completedCount) {
             name: "High Five",
             description: "Completed five unique tasks",
             unlocked: highFiveUnlocked,
-            progressLabel: highFiveUnlocked ? "Unlocked" : `${Math.min(5, highFiveCount)} / 5`
+            progressLabel: highFiveUnlocked ? "Unlocked" : `${Math.min(5, validCount)} / 5`
         }
     ];
 
     return {
-        totalXp,
-        completedCount,
+        totalXp: validXp,
+        completedCount: validCount,
         level,
         tier,
         cardClass,
@@ -192,6 +194,14 @@ function computeQuestProfile(totalXp, completedCount) {
         badges
     };
 }
+
+// Compute quest profile strictly from the currently completed tasks in session
+function computeQuestProfileFromCompletedTasks() {
+    const completedCount = completedTaskIds.size;
+    const totalXp = Math.max(0, completedCount * XP_PER_TASK);
+    return computeQuestProfile(totalXp, completedCount);
+}
+
 
 // Render the Quest Dashboard
 function renderQuestDashboard(questData) {
@@ -264,24 +274,27 @@ function renderQuestDashboard(questData) {
 }
 
 // Check for Level-Up and Badge Unlock milestones
-function checkGamificationMilestones(newQuestData, triggerCelebration = false) {
-    if (!triggerCelebration) {
+function checkGamificationMilestones(newQuestData, isCompleting = true) {
+    if (!isCompleting) {
+        // When uncompleting or silently syncing, update level and unlocked badges without firing celebration toasts
         currentLevelName = newQuestData.level;
+        unlockedBadgeIds.clear();
         newQuestData.badges.forEach((b) => {
             if (b.unlocked) unlockedBadgeIds.add(b.id);
         });
         return;
     }
 
-    if (currentLevelName && newQuestData.level !== currentLevelName) {
+    const levelRanks = { "Beginner": 1, "Task Explorer": 2, "Productivity Champion": 3 };
+    if (currentLevelName && (levelRanks[newQuestData.level] || 0) > (levelRanks[currentLevelName] || 0)) {
         showToast(
             `Level Up! 🎉`,
             `You reached ${newQuestData.level}! Keep crushing your goals.`,
             "🏆",
             "toast-level-up"
         );
-        currentLevelName = newQuestData.level;
     }
+    currentLevelName = newQuestData.level;
 
     newQuestData.badges.forEach((badge) => {
         if (badge.unlocked && !unlockedBadgeIds.has(badge.id)) {
@@ -292,6 +305,8 @@ function checkGamificationMilestones(newQuestData, triggerCelebration = false) {
                 "🎖️",
                 "toast-badge"
             );
+        } else if (!badge.unlocked && unlockedBadgeIds.has(badge.id)) {
+            unlockedBadgeIds.delete(badge.id);
         }
     });
 }
@@ -316,8 +331,14 @@ function updateTaskXpPill(taskItem, isCompleted) {
 async function handleTaskToggle(task, checkbox, taskItem) {
     const isNowCompleted = checkbox.checked;
 
+    // Prevent duplicate in-flight requests for this task
     if (pendingTaskUpdates.has(task.id)) {
         checkbox.checked = !isNowCompleted;
+        return;
+    }
+
+    // Ignore if target state already matches task state
+    if (Boolean(task.completed) === isNowCompleted) {
         return;
     }
 
@@ -339,6 +360,7 @@ async function handleTaskToggle(task, checkbox, taskItem) {
         }
 
         taskItem.classList.toggle("completed", task.completed);
+        checkbox.checked = task.completed;
         checkbox.setAttribute(
             "aria-label",
             `Mark task "${task.title}" as ${task.completed ? "incomplete" : "complete"}`
@@ -347,41 +369,27 @@ async function handleTaskToggle(task, checkbox, taskItem) {
         updateTaskXpPill(taskItem, task.completed);
 
         if (task.completed) {
-            if (!rewardedTaskIds.has(task.id)) {
-                // First-time completion in this session: award 20 XP
-                rewardedTaskIds.add(task.id);
-                triggerFloatingXpReward(taskItem, "+20 XP");
-
-                const updatedQuest = computeQuestProfile(
-                    rewardedTaskIds.size * XP_PER_TASK,
-                    rewardedTaskIds.size
-                );
-                renderQuestDashboard(updatedQuest);
-                checkGamificationMilestones(updatedQuest, true);
-            } else {
-                // Recompletion after an earlier reward: 0 XP
-                showToast("Task completed", "XP already earned for this task.", "ℹ️", "");
-                const updatedQuest = computeQuestProfile(
-                    rewardedTaskIds.size * XP_PER_TASK,
-                    rewardedTaskIds.size
-                );
-                renderQuestDashboard(updatedQuest);
-            }
+            // Task checked: add to completed set and show floating reward
+            completedTaskIds.add(task.id);
+            triggerFloatingXpReward(taskItem, "+20 XP");
         } else {
-            // Uncompletion: mark incomplete, retain rewarded status, never subtract XP
-            showToast("Task marked incomplete", "Retaining your earned XP progress.", "↩️", "");
-            const updatedQuest = computeQuestProfile(
-                rewardedTaskIds.size * XP_PER_TASK,
-                rewardedTaskIds.size
-            );
-            renderQuestDashboard(updatedQuest);
+            // Task unchecked: remove from completed set without floating reward
+            completedTaskIds.delete(task.id);
         }
+
+        // Recalculate quest profile strictly based on current completed tasks
+        const updatedQuest = computeQuestProfileFromCompletedTasks();
+        renderQuestDashboard(updatedQuest);
+
+        // Update milestones (celebrate on completion, silently sync on uncompletion)
+        checkGamificationMilestones(updatedQuest, task.completed);
 
         completedActions++;
         updateActionCounter();
 
     } catch (error) {
         console.error("Failed to update task completion:", error);
+        // Restore previous checkbox and card state without altering XP
         checkbox.checked = !isNowCompleted;
         taskItem.classList.toggle("completed", !isNowCompleted);
         showMessage(error.message || "Failed to update task completion status.", "error");
@@ -453,18 +461,16 @@ async function loadTasks() {
         taskCountElement.textContent =
             `${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}`;
 
-        // Sync rewardedTaskIds with loaded completed tasks
+        // Sync completedTaskIds with loaded completed tasks from DynamoDB
+        completedTaskIds.clear();
         tasks.forEach((t) => {
             if (t.completed) {
-                rewardedTaskIds.add(t.id);
+                completedTaskIds.add(t.id);
             }
         });
 
-        // Compute gamification state
-        const questData = (data.quest && typeof data.quest.totalXp === "number")
-            ? data.quest
-            : computeQuestProfile(rewardedTaskIds.size * XP_PER_TASK, rewardedTaskIds.size);
-
+        // Compute gamification state strictly from completed tasks
+        const questData = computeQuestProfileFromCompletedTasks();
         checkGamificationMilestones(questData, false);
         renderQuestDashboard(questData);
 
